@@ -1,0 +1,234 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+body { background: #f4f6f8; font-size: 14px; color: #333; }
+
+.header { background: #fff; padding: 0 16px; height: 50px; display: flex; align-items: center; border-bottom: 1px solid #e1e4e8; justify-content: space-between; }
+.logo { font-weight: bold; color: #1a49c8; font-size: 16px; }
+.nav a { margin-left: 12px; color: #666; font-size: 13px; text-decoration: none; }
+.nav a.active { color: #1a49c8; font-weight: bold; }
+
+.content { padding: 12px; }
+
+.pc-table-view { background: #fff; border: 1px solid #ddd; border-radius: 4px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; text-align: center; min-width: 800px; }
+th, td { padding: 10px 8px; border: 1px solid #eee; }
+th { background: #f8f9fa; font-weight: 600; }
+.text-left { text-align: left; }
+
+.btn-bizgo { background: #fee500; border: none; padding: 6px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; color: #000; font-size: 12px; }
+.btn-bizgo:hover { background: #fada0a; }
+.btn-bizgo.full-width { width: 100%; padding: 10px; font-size: 14px; }
+
+.mobile-card-view { display: none; flex-direction: column; gap: 12px; }
+.card { background: #fff; border: 1px solid #e1e4e8; border-radius: 8px; padding: 14px; }
+.card-header { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center; }
+.badge { background: #e8f0fe; color: #1a49c8; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+.contract-no { font-size: 12px; color: #888; }
+.card-body h3 { margin-bottom: 4px; font-size: 15px; }
+.card-body .apt { color: #555; margin-bottom: 8px; font-size: 13px; }
+.card-body p { font-size: 13px; margin-top: 2px; }
+.card-footer { margin-top: 12px; }
+
+@media (max-width: 768px) {
+  .pc-table-view { display: none; }
+  .mobile-card-view { display: flex; }
+}
+
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal-content { background: #fff; width: 90%; max-width: 400px; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.modal-body { margin: 15px 0; font-size: 13px; line-height: 1.6; }
+.modal-body .notice { margin-top: 10px; color: #666; font-size: 12px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 15px; }
+.btn-cancel { padding: 8px 14px; background: #eee; border: none; border-radius: 4px; cursor: pointer; }
+.btn-confirm { padding: 8px 14px; background: #fee500; border: none; font-weight: bold; border-radius: 4px; cursor: pointer; }
+
+/* 상단 버튼 그룹 */
+.action-button-group { display: flex; gap: 8px; margin-bottom: 12px; }
+.btn-action { padding: 6px 14px; border: none; border-radius: 4px; color: #fff; font-weight: bold; cursor: pointer; font-size: 12px; }
+.btn-action.blue { background-color: #5c82f2; }
+.btn-action.orange { background-color: #e65d3a; }
+
+/* 검색 영역 레이아웃 */
+.filter-box { background: #fff; padding: 16px; border: 1px solid #dcdfe6; border-radius: 4px; margin-bottom: 16px; }
+.filter-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.filter-row:last-child { margin-bottom: 0; }
+
+/* 입력 폼 스타일 */
+.filter-select { padding: 6px 10px; border: 1px solid #dcdfe6; border-radius: 4px; height: 34px; font-size: 13px; }
+.filter-input { padding: 6px 10px; border: 1px solid #dcdfe6; border-radius: 4px; height: 34px; font-size: 13px; }
+.date-picker-group { display: flex; align-items: center; gap: 6px; }
+
+.input-apt { width: 180px; }
+.input-short { width: 70px; }
+
+/* 검색 버튼 */
+.btn-search { background-color: #3f4248; color: #fff; border: none; padding: 0 16px; height: 34px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; }
+.btn-search:hover { background-color: #2b2d31; }
+
+/* 모바일 대응 */
+@media (max-width: 768px) {
+  .action-button-group { flex-wrap: wrap; }
+  .filter-row { flex-direction: column; align-items: stretch; }
+  .input-apt, .input-short, .filter-input { width: 100%; }
+}
+
+/* 전자계약 모달 레이아웃 */
+.contract-modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: flex-start; overflow-y: auto; z-index: 2000; padding: 20px 0; }
+.contract-modal-container { background: #fff; width: 90%; max-width: 900px; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); overflow: hidden; font-family: sans-serif; }
+
+/* 헤더 바 */
+.modal-header-bar { background: #f8f9fa; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
+.modal-header-bar h2 { font-size: 15px; color: #1a49c8; font-weight: bold; }
+.modal-header-bar .sub-title { color: #666; font-weight: normal; font-size: 13px; }
+.close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #888; }
+
+/* 폼 메인 */
+.contract-form { padding: 30px; color: #333; }
+.form-main-title { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 30px; color: #111; }
+
+/* 섹션 타이틀 */
+.form-section { margin-bottom: 30px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2b56c6; padding-bottom: 8px; margin-bottom: 15px; }
+.section-header h3 { font-size: 16px; font-weight: bold; color: #111; }
+.required-notice { color: #d9534f; font-size: 12px; font-weight: bold; }
+
+/* 폼 행 레이아웃 */
+.form-row { display: flex; align-items: center; margin-bottom: 16px; min-height: 38px; }
+.form-label { width: 140px; font-weight: bold; font-size: 13px; color: #222; }
+.form-label .star { color: #d9534f; }
+
+/* 입력창 언더라인 스타일 */
+.underline-input { border: none; border-bottom: 1px solid #ccc; outline: none; padding: 4px 6px; font-size: 13px; background: transparent; }
+.underline-input:focus { border-bottom-color: #2b56c6; }
+.underline-input.short { width: 80px; }
+.underline-input.medium { width: 220px; }
+.underline-input.long { width: 350px; }
+
+/* 옵션 및 라디오 그룹 */
+.radio-group, .radio-with-input { display: flex; align-items: center; gap: 15px; font-size: 13px; }
+.input-with-desc { display: flex; flex-direction: column; gap: 4px; }
+.input-desc { font-size: 11px; color: #888; }
+.multi-input-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* 하단 버튼 */
+.form-footer-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 30px; }
+.btn-form-blue { background-color: #4a72e8; color: #fff; border: none; padding: 10px 30px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px; }
+.btn-form-blue:hover { background-color: #355cc9; }
+
+/* 전자계약 모달 팝업 오버레이 (화면 중앙 고정) */
+.contract-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999; /* 최상단에 뜨도록 설정 */
+  padding: 20px;
+}
+
+/* 모달 컨테이너 박스 */
+.contract-modal-container {
+  background: #ffffff;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh; /* 화면 높이의 90%까지 배치 */
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 상단 타이틀 바 (고정) */
+.modal-header-bar {
+  background: #f8f9fa;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e1e4e8;
+}
+.modal-header-bar h2 { font-size: 16px; color: #1a49c8; margin: 0; }
+.modal-header-bar .sub-title { color: #666; font-size: 13px; font-weight: normal; }
+.close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #888; }
+
+/* 모달 내부 스크롤 처리 영역 */
+.modal-scroll-body {
+  padding: 25px 30px;
+  overflow-y: auto; /* 내용이 길어지면 수직 스크롤바 생성 */
+  flex: 1;
+}
+
+/* 폼 스타일 정렬 */
+.form-main-title { text-align: center; font-size: 20px; margin-bottom: 25px; color: #111; }
+.form-section { margin-bottom: 25px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2b56c6; padding-bottom: 6px; margin-bottom: 15px; }
+.section-header h3 { font-size: 15px; margin: 0; color: #111; }
+.required-notice { color: #d9534f; font-size: 12px; }
+
+.form-row { display: flex; align-items: center; margin-bottom: 14px; }
+.form-label { width: 140px; font-weight: bold; font-size: 13px; color: #222; }
+.form-label .star { color: #d9534f; }
+
+.underline-input { border: none; border-bottom: 1px solid #ccc; outline: none; padding: 4px; font-size: 13px; }
+.underline-input:focus { border-bottom-color: #2b56c6; }
+.underline-input.short { width: 70px; }
+.underline-input.medium { width: 200px; }
+.underline-input.long { width: 320px; }
+
+.radio-group, .radio-with-input { display: flex; align-items: center; gap: 15px; font-size: 13px; }
+.input-with-desc { display: flex; flex-direction: column; gap: 2px; }
+.input-desc { font-size: 11px; color: #888; }
+.multi-input-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.form-footer-buttons { display: flex; justify-content: center; gap: 12px; margin-top: 25px; }
+.btn-form-blue { background-color: #4a72e8; color: #fff; border: none; padding: 10px 28px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+.btn-form-blue:hover { background-color: #355cc9; }
+
+/* 검색바 양쪽 정렬 레이아웃 */
+.search-row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.search-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 우측 정렬 버튼 그룹 */
+.right-btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-right-dark {
+  background-color: #3f4248;
+  color: #ffffff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-right-dark:hover {
+  background-color: #2b2d31;
+}
+
+@media (max-width: 768px) {
+  .search-row-between { flex-direction: column; align-items: stretch; }
+  .right-btn-group { width: 100%; justify-content: flex-end; }
+}
