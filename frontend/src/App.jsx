@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
+import './App.css';
 import SearchFilter from './components/SearchFilter.jsx';
 import ContractTable from './components/ContractTable.jsx';
 import ContractModal from './components/ContractModal.jsx';
 import ScheduleManagement from './components/ScheduleManagement.jsx';
-import ProgressStatus from './components/ProgressStatus.jsx';
 import CustomerManagement from './components/CustomerManagement.jsx';
+import ProgressStatus from './components/ProgressStatus.jsx';
 
 const initialContracts = [
   {
@@ -39,7 +40,11 @@ const initialContracts = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('contract');
+  // ★ localStorage에서 마지막에 열람했던 탭을 읽어옴 (새로고침 유지)
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('lastActiveTab') || 'contract';
+  });
+
   const [subTab, setSubTab] = useState('main'); // 'main' | 'trash'
   const [isContractDropdownOpen, setIsContractDropdownOpen] = useState(false);
 
@@ -49,10 +54,16 @@ export default function App() {
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
-  // 알림톡 선택 옵션 상태
+  // 알림톡 옵션 상태
   const [talkBrand, setTalkBrand] = useState('더좋은집');
   const [talkTemplate, setTalkTemplate] = useState('기사배정');
-  const [talkTarget, setTalkTarget] = useState('고객'); // '고객' | '기사'
+  const [talkTarget, setTalkTarget] = useState('고객');
+
+  // ★ 탭 변경 시 상태 저장 함수
+  const handleTabChange = (tabName) => {
+    setActiveTab(tabName);
+    localStorage.setItem('lastActiveTab', tabName);
+  };
 
   const handleSearch = (filterData) => {
     const { aptName, customerName, phone } = filterData;
@@ -123,7 +134,6 @@ export default function App() {
     setTalkTarget('고객');
   };
 
-  // 수신자 정보 추출
   const getReceiverInfo = () => {
     if (!selectedContract) return { name: '', phone: '' };
     if (talkTarget === '기사') {
@@ -176,7 +186,7 @@ export default function App() {
           className={`nav-item dropdown-parent ${activeTab === 'contract' ? 'active' : ''}`}
           onMouseEnter={() => setIsContractDropdownOpen(true)}
           onMouseLeave={() => setIsContractDropdownOpen(false)}
-          onClick={() => { setActiveTab('contract'); setSubTab('main'); }}
+          onClick={() => { handleTabChange('contract'); setSubTab('main'); }}
         >
           <div className="nav-icon">📝</div>
           <span className="nav-label">계약관리</span>
@@ -185,13 +195,13 @@ export default function App() {
             <div className="dropdown-menu">
               <div 
                 className={`dropdown-item ${subTab === 'main' ? 'active-sub' : ''}`}
-                onClick={(e) => { e.stopPropagation(); setActiveTab('contract'); setSubTab('main'); setIsContractDropdownOpen(false); }}
+                onClick={(e) => { e.stopPropagation(); handleTabChange('contract'); setSubTab('main'); setIsContractDropdownOpen(false); }}
               >
                 계약관리
               </div>
               <div 
                 className={`dropdown-item ${subTab === 'trash' ? 'active-sub' : ''}`}
-                onClick={(e) => { e.stopPropagation(); setActiveTab('contract'); setSubTab('trash'); setIsContractDropdownOpen(false); }}
+                onClick={(e) => { e.stopPropagation(); handleTabChange('contract'); setSubTab('trash'); setIsContractDropdownOpen(false); }}
               >
                 휴지통
               </div>
@@ -199,43 +209,43 @@ export default function App() {
           )}
         </div>
 
-        <div className={`nav-item ${activeTab === 'customer' ? 'active' : ''}`} onClick={() => setActiveTab('customer')}>
+        <div className={`nav-item ${activeTab === 'customer' ? 'active' : ''}`} onClick={() => handleTabChange('customer')}>
           <div className="nav-icon">👤</div>
           <span className="nav-label">계약자관리</span>
         </div>
 
-        <div className={`nav-item ${activeTab === 'schedule' ? 'active' : ''}`} onClick={() => setActiveTab('schedule')}>
+        <div className={`nav-item ${activeTab === 'schedule' ? 'active' : ''}`} onClick={() => handleTabChange('schedule')}>
           <div className="nav-icon">📅</div>
           <span className="nav-label">일정관리</span>
         </div>
 
-        <div className={`nav-item ${activeTab === 'progress' ? 'active' : ''}`} onClick={() => setActiveTab('progress')}>
+        <div className={`nav-item ${activeTab === 'progress' ? 'active' : ''}`} onClick={() => handleTabChange('progress')}>
           <div className="nav-icon">📑</div>
           <span className="nav-label">진행상황</span>
         </div>
 
-        <div className={`nav-item ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
+        <div className={`nav-item ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => handleTabChange('stats')}>
           <div className="nav-icon">📊</div>
           <span className="nav-label">통계정보</span>
         </div>
 
-        <div className={`nav-item ${activeTab === 'counsel' ? 'active' : ''}`} onClick={() => setActiveTab('counsel')}>
+        <div className={`nav-item ${activeTab === 'counsel' ? 'active' : ''}`} onClick={() => handleTabChange('counsel')}>
           <div className="nav-icon">💬</div>
           <span className="nav-label">상담관리</span>
         </div>
 
-        <div className={`nav-item ${activeTab === 'notice' ? 'active' : ''}`} onClick={() => setActiveTab('notice')}>
+        <div className={`nav-item ${activeTab === 'notice' ? 'active' : ''}`} onClick={() => handleTabChange('notice')}>
           <div className="nav-icon">📢</div>
           <span className="nav-label">공지사항</span>
         </div>
 
-        <div className={`nav-item ${activeTab === 'setting' ? 'active' : ''}`} onClick={() => setActiveTab('setting')}>
+        <div className={`nav-item ${activeTab === 'setting' ? 'active' : ''}`} onClick={() => handleTabChange('setting')}>
           <div className="nav-icon">⚙️</div>
           <span className="nav-label">설정</span>
         </div>
       </header>
 
-      {/* 본문 레이아웃 */}
+      {/* 메인 콘텐츠 영역 */}
       <main className="content">
         {activeTab === 'contract' && subTab === 'main' && (
           <>
