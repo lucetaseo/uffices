@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import './App.css';
+import './App.css'; // ★ 모달 및 전체 스타일 적용을 위한 필수 Import
+
 import SearchFilter from './components/SearchFilter.jsx';
 import ContractTable from './components/ContractTable.jsx';
 import ContractModal from './components/ContractModal.jsx';
@@ -40,7 +41,7 @@ const initialContracts = [
 ];
 
 export default function App() {
-  // ★ localStorage에서 마지막에 열람했던 탭을 읽어옴 (새로고침 유지)
+  // localStorage에서 마지막에 열람했던 탭 읽어오기
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('lastActiveTab') || 'contract';
   });
@@ -59,7 +60,7 @@ export default function App() {
   const [talkTemplate, setTalkTemplate] = useState('기사배정');
   const [talkTarget, setTalkTarget] = useState('고객');
 
-  // ★ 탭 변경 시 상태 저장 함수
+  // 탭 변경 시 상태 저장
   const handleTabChange = (tabName) => {
     setActiveTab(tabName);
     localStorage.setItem('lastActiveTab', tabName);
@@ -227,16 +228,6 @@ export default function App() {
         <div className={`nav-item ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => handleTabChange('stats')}>
           <div className="nav-icon">📊</div>
           <span className="nav-label">통계정보</span>
-        </div>
-
-        <div className={`nav-item ${activeTab === 'counsel' ? 'active' : ''}`} onClick={() => handleTabChange('counsel')}>
-          <div className="nav-icon">💬</div>
-          <span className="nav-label">상담관리</span>
-        </div>
-
-        <div className={`nav-item ${activeTab === 'notice' ? 'active' : ''}`} onClick={() => handleTabChange('notice')}>
-          <div className="nav-icon">📢</div>
-          <span className="nav-label">공지사항</span>
         </div>
 
         <div className={`nav-item ${activeTab === 'setting' ? 'active' : ''}`} onClick={() => handleTabChange('setting')}>
