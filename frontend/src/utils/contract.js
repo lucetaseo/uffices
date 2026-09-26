@@ -115,3 +115,22 @@ export function teamOffStatus(teamId, engineers, offOf, slot) {
   }).length;
   return { total: members.length, offCount, allOff: members.length > 0 && offCount === members.length };
 }
+
+// 같은 현장에 시공을 추가할 때 계약서 작성 화면에 미리 채울 값
+export const groupPrefill = (c) => ({
+  brand: c.brand,
+  customerName: c.customerName,
+  customerPhone: c.customerPhone,
+  customerPhone2: c.customerPhone2 || '',
+  ownerId: String(c.ownerId || ''),
+  aptName: c.aptName,
+  dong: c.dong,
+  ho: c.ho,
+  aptType: c.aptType,
+  area: c.area || '',
+  contractDate: c.contractDate,
+  moveInDate: c.moveInDate || '',
+  receptionType: c.receptionType,
+  taxInvoice: c.taxInvoice || '',
+  cashReceipt: c.cashReceipt || '',
+});

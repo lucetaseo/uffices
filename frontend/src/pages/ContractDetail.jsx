@@ -20,7 +20,7 @@ const scheduleLine = (s) => (s?.date ? `${s.date}(${timeLabel(s) || '무관'})` 
 
 // 계약 상세: 같은 계약자·같은 현장의 시공들을 한 화면에서 관리
 //   onEdit(contract)          시공 수정 (계약서 작성 화면)
-//   onNewWork(prefill)        같은 현장에 시공 추가
+//   onNewWork(contract)       같은 현장에 시공 추가
 //   onOpenGroup(contractId)   다른 현장 계약으로 이동 (계약자 탭)
 export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, onOpenGroup }) {
   const { company, can, handleError } = useAuth();
@@ -103,22 +103,6 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
       .map((s, i) => ({ c, s, i }))
       .filter(({ s }) => s.mobileStatus || (c.status === '시공완료' && s.date)),
   );
-
-  const prefillFrom = (c) => ({
-    brand: c.brand,
-    customerName: c.customerName,
-    customerPhone: c.customerPhone,
-    customerPhone2: c.customerPhone2,
-    ownerId: String(c.ownerId || ''),
-    aptName: c.aptName,
-    dong: c.dong,
-    ho: c.ho,
-    aptType: c.aptType,
-    area: c.area,
-    contractDate: c.contractDate,
-    moveInDate: c.moveInDate,
-    receptionType: c.receptionType,
-  });
 
   // ---------------- 탭별 화면 ----------------
   const basicInfo = (
@@ -330,7 +314,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
       </div>
       {can('contract.create') && (
         <div className="section-actions">
-          <button type="button" className="btn-dark-lg sm" onClick={() => onNewWork(prefillFrom(head))}>
+          <button type="button" className="btn-dark-lg sm" onClick={() => onNewWork(head)}>
             + 시공등록
           </button>
         </div>

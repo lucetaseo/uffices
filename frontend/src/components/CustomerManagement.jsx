@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { formatPhone, isValidPhone } from '../utils/format.js';
 import { downloadExcel } from '../utils/excel.js';
 import Pagination from './Pagination.jsx';
+import { navigate } from '../router.js';
 
 const PAGE_SIZE = 20;
 
@@ -19,7 +20,8 @@ const EMPTY_FORM = {
   address2: '',
 };
 
-export default function CustomerManagement({ openNew, onOpenNewHandled }) {
+export default function CustomerManagement({ route }) {
+  const openNew = route?.query.get('new') === '1';
   const { can, handleError } = useAuth();
   const canEdit = can('customer.edit');
   const [list, setList] = useState([]);
@@ -44,7 +46,7 @@ export default function CustomerManagement({ openNew, onOpenNewHandled }) {
   useEffect(() => {
     if (openNew) {
       if (canEdit) setForm({ ...EMPTY_FORM });
-      onOpenNewHandled();
+      navigate('/customers', { replace: true }); // 새로고침 시 다시 열리지 않도록 주소 정리
     }
   }, [openNew]); // eslint-disable-line react-hooks/exhaustive-deps
 

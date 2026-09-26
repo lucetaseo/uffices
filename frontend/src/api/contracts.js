@@ -538,7 +538,7 @@ export const contracts = {
     c.updatedAt = nowIso();
     addHistory(c, user, '전자서명 요청');
     saveDb(db);
-    return { token, url: `${publicBaseUrl()}#/sign/${token}` };
+    return { token, url: `${publicBaseUrl().replace(/\/+$/, '')}/sign/${token}` };
   },
 };
 
