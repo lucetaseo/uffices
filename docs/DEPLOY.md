@@ -14,20 +14,27 @@
 ## 1단계 — Supabase 데이터베이스 만들기 (약 5분)
 
 1. https://supabase.com 에 가입 (GitHub 계정으로 가능)
-2. **New project**
+2. **유피스 전용 조직 만들기**: 왼쪽 위 조직 이름 → **New organization**
+   - Name: `UFFICE`, Type: Company, Plan: **Free** (판매 시작할 때 이 조직만 Pro 로 전환)
+   - 다른 개인 프로젝트는 다른 조직에 두면, 유피스를 유료로 바꿔도 비용이 따로 계산됩니다
+   - 결제 이메일(Billing email)은 회사 이메일로 지정 권장
+3. `UFFICE` 조직 안에서 **New project**
    - Name: `uffice` (자유)
    - Database Password: **강한 비밀번호 생성 후 따로 보관** (다시 볼 수 없음)
    - Region: **Northeast Asia (Seoul)** ← 개인정보가 국내에 저장되고 속도도 빠름
-3. 프로젝트가 만들어지면 상단 **Connect** 버튼 → **Connection string** 탭
+4. 프로젝트가 만들어지면 상단 **Connect** 버튼 → **Connection string** 탭
    - **Transaction pooler** (포트 `6543`) 주소를 복사
    - 예: `postgresql://postgres.abcd:[YOUR-PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres`
-   - `[YOUR-PASSWORD]` 부분을 2번에서 만든 비밀번호로 바꿈 → 이것이 **DATABASE_URL**
+   - `[YOUR-PASSWORD]` 부분을 3번에서 만든 비밀번호로 바꿈 → 이것이 **DATABASE_URL**
 
 > Supabase 에서 표를 직접 만들 필요는 없습니다. 서버가 처음 켜질 때 자동으로 만듭니다.
 
 ---
 
 ## 2단계 — Vercel 에 연결하기 (약 5분)
+
+> 계정 구성: 지금은 **개인 계정(Hobby, 무료)** 에 배포합니다. Vercel 의 팀(Team)은 유료(Pro) 전용이라,
+> 실제 판매를 시작할 때 `UFFICE` 팀을 만들고 프로젝트를 옮기면 됩니다 (Settings → General → Transfer Project).
 
 1. https://vercel.com 에 GitHub 계정으로 로그인
 2. **Add New… → Project** → `lucetaseo/uffices` 옆 **Import**
@@ -68,6 +75,10 @@ crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', ''
 ---
 
 ## 주의사항
+
+### GitHub 2단계 인증
+GitHub 아이디 하나로 코드·데이터베이스·배포에 모두 들어가므로 **2단계 인증을 꼭 켜세요**
+(GitHub → Settings → Password and authentication → Two-factor authentication).
 
 ### 미리보기(Preview) 배포와 데이터베이스
 Vercel 은 `main` 이 아닌 브랜치를 푸시할 때마다 미리보기 주소를 만듭니다. 환경변수를 Preview 에도 넣으면 **미리보기도 실서비스 DB 를 같이 쓰게 됩니다.**
