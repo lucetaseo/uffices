@@ -7,6 +7,7 @@ import { loadDb, saveDb, nextId, publicBaseUrl, clientInfo } from './runtime.js'
 import { ApiError, authorize, clone, findContract, nowIso, visibleContracts } from './core.js';
 import { addHistory, assigneeOf, contractView } from './views.js';
 import { assertAssignable } from './schedule.js';
+import { invalidateNumbers } from './numbering.js';
 import { can } from '../auth/permissions.js';
 import {
   APPROVAL_STATUS,
@@ -14,8 +15,10 @@ import {
   CATEGORIES,
   ESIGN_STATUS,
   MAX_SCHEDULE_STEPS,
+  ISSUE_STATUS,
   PAYMENT_KINDS,
   PAYMENT_METHODS,
+  RECEIPT_TYPES,
   RECEPTION_TYPES,
   WORK_STATUS,
   WORK_TYPES,
@@ -72,12 +75,15 @@ export function matchesFilter(c, f) {
   return true;
 }
 
+// 정렬 (번호가 붙은 화면용 데이터 기준). 번호 = 계약일 순서
+const byNo = (a, b) => (a.no ?? 0) - (b.no ?? 0) || a.id - b.id;
 const SORTERS = {
-  contractDate_desc: (a, b) => (b.contractDate || '').localeCompare(a.contractDate || '') || b.no - a.no,
-  contractDate_asc: (a, b) => (a.contractDate || '').localeCompare(b.contractDate || '') || a.no - b.no,
+  no_desc: (a, b) => byNo(b, a),
+  no_asc: byNo,
+  contractDate_desc: (a, b) => byNo(b, a), // 이전 버전 저장값 호환
+  contractDate_asc: byNo,
   scheduleDate_asc: (a, b) =>
-    (firstScheduleDate(a) || '9999').localeCompare(firstScheduleDate(b) || '9999') || b.no - a.no,
-  no_desc: (a, b) => b.no - a.no,
+    (firstScheduleDate(a) || '9999').localeCompare(firstScheduleDate(b) || '9999') || byNo(b, a),
 };
 
 // ------------------------------------------------------------
@@ -170,6 +176,9 @@ function normalizeContractInput(db, user, data, existing) {
     canceledDate: status === '취소' ? (isDateKey(data.canceledDate) ? data.canceledDate : today()) : '',
     cancelReason: status === '취소' ? String(data.cancelReason || '').trim() : '',
     items: data.items || '',
+    engineerNote: data.engineerNote || '', // 기사전달사항 (기사모바일에 표시)
+    taxInvoice: oneOf(data.taxInvoice, ISSUE_STATUS, ''),
+    cashReceipt: oneOf(data.cashReceipt, ISSUE_STATUS, ''),
     happyCallMemo: data.happyCallMemo || '',
     memo: data.memo || '',
   };
@@ -192,19 +201,41 @@ function normalizeContractInput(db, user, data, existing) {
     out.discount = Math.max(0, Number(data.discount) || 0);
     out.voucher = Math.max(0, Number(data.voucher) || 0);
     if (out.discount + out.voucher > out.totalAmount) throw new ApiError('할인/상품권 금액이 시공총액보다 큽니다.');
-    out.payments = (data.payments || [])
-      .filter((p) => Number(p.amount))
-      .map((p, i) => ({
-        id: i + 1,
-        date: isDateKey(p.date) ? p.date : today(),
-        kind: oneOf(p.kind, PAYMENT_KINDS, PAYMENT_KINDS[0]),
-        method: oneOf(p.method, PAYMENT_METHODS, PAYMENT_METHODS[0]),
-        amount: Number(p.amount),
-        memo: p.memo || '',
-      }));
+    const input = (data.payments || []).filter((p) => Number(p.amount));
+    let nextPid = Math.max(0, ...input.map((p) => Number(p.id) || 0));
+    const seen = new Set();
+    out.payments = input.map((p) => {
+      let id = Number(p.id) || 0;
+      if (!id || seen.has(id)) id = ++nextPid;
+      seen.add(id);
+      return normalizePayment(p, id);
+    });
   }
   return out;
 }
+
+// 입금 1건 정규화. 카드번호는 뒤 4자리만 저장 (전체 카드번호 저장 금지)
+function normalizePayment(p, id) {
+  const amount = Math.round(Number(p.amount) || 0);
+  if (amount <= 0) throw new ApiError('입금액을 입력해 주세요.');
+  return {
+    id,
+    date: isDateKey(p.date) ? p.date : today(),
+    kind: oneOf(p.kind, PAYMENT_KINDS, PAYMENT_KINDS[0]),
+    method: oneOf(p.method, PAYMENT_METHODS, PAYMENT_METHODS[0]),
+    amount,
+    payerName: String(p.payerName || '').trim().slice(0, 30),
+    approvalNo: String(p.approvalNo || '').trim().slice(0, 30),
+    bankOrCard: String(p.bankOrCard || '').trim().slice(0, 30),
+    cardLast4: String(p.cardLast4 || '').replace(/\D/g, '').slice(-4),
+    receipt: oneOf(p.receipt, RECEIPT_TYPES, RECEIPT_TYPES[0]),
+    memo: String(p.memo || '').slice(0, 200),
+    createdAt: p.createdAt || nowIso(),
+  };
+}
+
+// 같은 계약 묶음: 같은 계약자 + 같은 현장(아파트/동/호)의 시공들
+const groupKey = (c) => [c.customerId, c.aptName, c.dong, c.ho].join('|');
 
 // 변경이력용 비교
 function diffContract(db, before, after) {
@@ -242,6 +273,7 @@ function diffContract(db, before, after) {
     push('할인', won(a.discount), won(b.discount));
     push('상품권', won(a.voucher), won(b.voucher));
     push('입금합계', won(a.paid), won(b.paid));
+    push('환불합계', won(a.refund), won(b.refund));
   }
   if ((before.items || '') !== (after.items || '')) changes.push({ label: '시공내용', from: '(변경)', to: '(변경)' });
   if ((before.happyCallMemo || '') !== (after.happyCallMemo || '')) changes.push({ label: '해피콜 메모', from: '(변경)', to: '(변경)' });
@@ -285,8 +317,8 @@ export const contracts = {
     return visibleContracts(db, user)
       .filter((c) => (filters.trash ? !!c.deletedAt : !c.deletedAt))
       .filter((c) => matchesFilter(c, filters))
-      .sort(SORTERS[filters.sort] || SORTERS.contractDate_desc)
-      .map((c) => contractView(c, user, db));
+      .map((c) => contractView(c, user, db))
+      .sort(SORTERS[filters.sort] || SORTERS.no_desc);
   },
 
   async get(id) {
@@ -301,9 +333,7 @@ export const contracts = {
     const { db, user } = await authorize('contract.create');
     const fields = normalizeContractInput(db, user, data, null);
     assertSchedulesAssignable(db, user, fields.schedules, [], null);
-    const company = db.companies.find((c) => c.id === user.companyId);
     const cust = upsertCustomerForContract(db, user, fields.customerName, fields.customerPhone, fields.customerPhone2);
-    company.contractSeq = (company.contractSeq || 0) + 1;
     const contract = {
       totalAmount: 0,
       discount: 0,
@@ -313,7 +343,6 @@ export const contracts = {
       ...fields,
       id: nextId(db, 'contracts'),
       companyId: user.companyId,
-      no: company.contractSeq,
       customerId: cust.id,
       esign: { status: ESIGN_STATUS.NONE, token: null },
       history: [],
@@ -323,6 +352,7 @@ export const contracts = {
     };
     addHistory(contract, user, '계약 등록');
     db.contracts.push(contract);
+    invalidateNumbers(db);
     saveDb(db);
     return contractView(contract, user, db);
   },
@@ -352,6 +382,7 @@ export const contracts = {
     Object.assign(c, fields, { updatedAt: nowIso() });
     const changes = diffContract(db, before, c);
     if (changes.length) addHistory(c, user, '계약 수정', changes);
+    invalidateNumbers(db);
     saveDb(db);
     return contractView(c, user, db);
   },
@@ -394,6 +425,7 @@ export const contracts = {
       c.deletedAt = nowIso();
       addHistory(c, user, '휴지통으로 이동');
     });
+    invalidateNumbers(db);
     saveDb(db);
   },
 
@@ -404,6 +436,7 @@ export const contracts = {
       c.deletedAt = null;
       addHistory(c, user, '휴지통에서 복구');
     });
+    invalidateNumbers(db);
     saveDb(db);
   },
 
@@ -412,6 +445,85 @@ export const contracts = {
     const set = new Set(ids.map(Number));
     const purgeIds = new Set(visibleContracts(db, user).filter((c) => set.has(c.id) && c.deletedAt).map((c) => c.id));
     db.contracts = db.contracts.filter((c) => !purgeIds.has(c.id));
+    invalidateNumbers(db);
+    saveDb(db);
+  },
+
+  // ---------------- 계약 상세 (같은 계약자·현장 묶음) ----------------
+  // GET /api/contracts/:id/group
+  async group(id) {
+    const { db, user } = await authorize('contract.view');
+    const base = findContract(db, user, id);
+    const key = groupKey(base);
+    const items = visibleContracts(db, user)
+      .filter((c) => !c.deletedAt && groupKey(c) === key)
+      .map((c) => contractView(c, user, db))
+      .sort(SORTERS.no_desc);
+    if (base.deletedAt) items.unshift(contractView(base, user, db));
+    const customer = db.customers.find((c) => c.id === base.customerId);
+    // 같은 계약자의 다른 현장 계약 (계약자 탭)
+    const others = visibleContracts(db, user)
+      .filter((c) => !c.deletedAt && c.customerId === base.customerId && groupKey(c) !== key)
+      .map((c) => contractView(c, user, db))
+      .sort(SORTERS.no_desc);
+    const notes = items
+      .flatMap((c) => (c.notes || []).map((n) => ({ ...n, contractId: c.id, category: c.category })))
+      .sort((a, b) => b.at.localeCompare(a.at));
+    return { selectedId: base.id, contracts: items, customer: customer ? clone(customer) : null, otherContracts: others, notes };
+  },
+
+  // ---------------- 입금 (계약 상세의 입금등록) ----------------
+  async addPayment(id, payment) {
+    const { db, user } = await authorize('contract.edit');
+    if (!can(user, 'contract.amount')) throw new ApiError('금액·입금 정보 권한이 없습니다.', 'FORBIDDEN');
+    const c = findContract(db, user, id);
+    if (c.deletedAt) throw new ApiError('휴지통에 있는 계약입니다.');
+    c.payments = c.payments || [];
+    const p = normalizePayment(payment, Math.max(0, ...c.payments.map((x) => x.id)) + 1);
+    c.payments.push(p);
+    addHistory(c, user, `${p.kind === '환불' ? '환불' : '입금'} 등록`, [{ label: p.kind, from: '-', to: `${won(p.amount)}원 (${p.method})` }]);
+    c.updatedAt = nowIso();
+    saveDb(db);
+    return contractView(c, user, db);
+  },
+
+  async updatePayment(id, paymentId, payment) {
+    const { db, user } = await authorize('contract.edit');
+    if (!can(user, 'contract.amount')) throw new ApiError('금액·입금 정보 권한이 없습니다.', 'FORBIDDEN');
+    const c = findContract(db, user, id);
+    const idx = (c.payments || []).findIndex((x) => x.id === Number(paymentId));
+    if (idx < 0) throw new ApiError('입금 내역을 찾을 수 없습니다.', 'NOT_FOUND');
+    const before = c.payments[idx];
+    const p = normalizePayment({ ...payment, createdAt: before.createdAt }, before.id);
+    c.payments[idx] = p;
+    addHistory(c, user, '입금 수정', [{ label: `${before.kind} ${before.date}`, from: `${won(before.amount)}원`, to: `${won(p.amount)}원` }]);
+    c.updatedAt = nowIso();
+    saveDb(db);
+    return contractView(c, user, db);
+  },
+
+  async removePayment(id, paymentId) {
+    const { db, user } = await authorize('contract.edit');
+    if (!can(user, 'contract.amount')) throw new ApiError('금액·입금 정보 권한이 없습니다.', 'FORBIDDEN');
+    const c = findContract(db, user, id);
+    const p = (c.payments || []).find((x) => x.id === Number(paymentId));
+    if (!p) throw new ApiError('입금 내역을 찾을 수 없습니다.', 'NOT_FOUND');
+    c.payments = c.payments.filter((x) => x !== p);
+    addHistory(c, user, '입금 삭제', [{ label: `${p.kind} ${p.date}`, from: `${won(p.amount)}원`, to: '삭제' }]);
+    c.updatedAt = nowIso();
+    saveDb(db);
+    return contractView(c, user, db);
+  },
+
+  // ---------------- 상담내역 ----------------
+  async addNote(id, text) {
+    const { db, user } = await authorize('contract.view');
+    const body = String(text || '').trim();
+    if (!body) throw new ApiError('상담 내용을 입력해 주세요.');
+    const c = findContract(db, user, id);
+    c.notes = c.notes || [];
+    c.notes.push({ id: Math.max(0, ...c.notes.map((n) => n.id)) + 1, at: nowIso(), byId: user.id, byName: user.name, text: body.slice(0, 2000) });
+    c.updatedAt = nowIso();
     saveDb(db);
   },
 
@@ -445,6 +557,8 @@ export const esign = {
     delete view.history;
     delete view.memo; // 내부 메모는 고객에게 노출하지 않음
     delete view.happyCallMemo;
+    delete view.notes;
+    delete view.engineerNote;
     return { contract: view, company: { name: company.name, ceo: company.ceo, bizNo: company.bizNo, address: company.address } };
   },
 

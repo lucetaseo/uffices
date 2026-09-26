@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { contracts as contractApi, engineers as engineerApi, users as userApi } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { ROLES, isOwnScopeOnly } from '../auth/permissions.js';
 import SearchFilter, { EMPTY_FILTER } from '../components/SearchFilter.jsx';
 import ContractTable from '../components/ContractTable.jsx';
 import ContractEditor from './ContractEditor.jsx';
+import ContractDetail from './ContractDetail.jsx';
 import ContractViewModal from '../components/ContractViewModal.jsx';
 import KakaoModal from '../components/KakaoModal.jsx';
 import Pagination from '../components/Pagination.jsx';
@@ -35,7 +36,9 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
   const [engineers, setEngineers] = useState([]);
   const [staff, setStaff] = useState([]);
 
-  const [editTarget, setEditTarget] = useState(null); // null=목록, 'new' 또는 계약객체 → 계약서 작성 화면
+  // 화면 이동: 목록 → 상세(detailId) → 계약서 작성(editTarget)
+  const [editTarget, setEditTarget] = useState(null); // null | { id } 수정 | { prefill } 새 시공
+  const [detailId, setDetailId] = useState(null);
   const [viewId, setViewId] = useState(null);
   const [kakaoTarget, setKakaoTarget] = useState(null);
 
@@ -59,6 +62,15 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
     setPage(1);
   }, [filter, trash]);
 
+  // 휴지통 ↔ 목록을 실제로 전환했을 때만 상세/작성 화면 닫기 (처음 열릴 때는 제외)
+  const prevTrash = useRef(trash);
+  useEffect(() => {
+    if (prevTrash.current === trash) return;
+    prevTrash.current = trash;
+    setDetailId(null);
+    setEditTarget(null);
+  }, [trash]);
+
   useEffect(() => {
     engineerApi.list().then(setEngineers).catch(() => {});
     // 본인 건만 보는 실장에게는 작성자 필터가 의미 없으므로 숨김
@@ -67,7 +79,7 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
 
   useEffect(() => {
     if (openNew) {
-      if (can('contract.create') && !trash) setEditTarget('new');
+      if (can('contract.create') && !trash) setEditTarget({ prefill: null });
       onOpenNewHandled();
     }
   }, [openNew]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -109,12 +121,11 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
     }
   };
 
-  const closeEditor = async (saved, isEdit) => {
+  // 저장하면 해당 계약 상세로, 취소하면 원래 화면(상세 또는 목록)으로
+  const closeEditor = async (saved) => {
     setEditTarget(null);
+    if (saved) setDetailId(saved.id);
     await load();
-    if (saved && !isEdit && can('esign.send') && window.confirm('바로 계약서를 열어 고객 전자서명을 요청하시겠습니까?')) {
-      setViewId(saved.id);
-    }
   };
 
   const handleExport = () => {
@@ -152,7 +163,9 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
             할인: a.discount,
             상품권: a.voucher,
             실계약금: a.actual,
+            매출취소: a.canceled,
             입금: a.paid,
+            환불: a.refund,
             잔액: a.balance,
           });
         }
@@ -172,7 +185,7 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
           계약서
         </button>
         {can('contract.edit') && (
-          <button type="button" className="btn-outline-action" onClick={() => setEditTarget(item)}>
+          <button type="button" className="btn-outline-action" onClick={() => setEditTarget({ id: item.id })}>
             수정
           </button>
         )}
@@ -187,9 +200,26 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
   if (editTarget) {
     return (
       <ContractEditor
-        contractId={editTarget === 'new' ? null : editTarget.id}
+        contractId={editTarget.id || null}
+        prefill={editTarget.prefill}
         engineers={engineers}
         onClose={closeEditor}
+      />
+    );
+  }
+
+  if (detailId) {
+    return (
+      <ContractDetail
+        key={detailId}
+        contractId={detailId}
+        onBack={() => {
+          setDetailId(null);
+          load();
+        }}
+        onEdit={(c) => setEditTarget({ id: c.id })}
+        onNewWork={(prefill) => setEditTarget({ prefill })}
+        onOpenGroup={(id) => setDetailId(id)}
       />
     );
   }
@@ -209,7 +239,7 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
         actions={
           <>
             {!trash && can('contract.create') && (
-              <button type="button" className="btn-dark-lg sm" onClick={() => setEditTarget('new')}>
+              <button type="button" className="btn-dark-lg sm" onClick={() => setEditTarget({ prefill: null })}>
                 + 계약등록
               </button>
             )}
@@ -241,9 +271,16 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
               </span>
             </div>
             <div>
+              <span className="summary-label">매출취소총액</span>
+              {won(summary.canceledAmount)}원 <span className="sub-text">(취소 건은 합계에서 제외)</span>
+            </div>
+            <div>
+              <span className="summary-label">환불금액</span>
+              {won(summary.refund)}원
+            </div>
+            <div>
               <span className="summary-label">남은금액</span>
               <strong>{won(summary.balance)}원</strong>
-              <span className="sub-text"> · 취소금액 {won(summary.canceledAmount)}원 (합계 제외)</span>
             </div>
           </>
         )}
@@ -290,6 +327,7 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
             onToggleAll={toggleAll}
             showAmount={showAmount}
             renderActions={renderActions}
+            onOpen={trash ? undefined : (c) => setDetailId(c.id)}
           />
           <Pagination page={page} total={rows.length} pageSize={PAGE_SIZE} onChange={setPage} />
         </>
