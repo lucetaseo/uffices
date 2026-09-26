@@ -40,6 +40,11 @@ export function getPool() {
   return pool;
 }
 
+export async function closePool() {
+  if (pool) await pool.end();
+  pool = null;
+}
+
 const rows = async (client, sql, params = []) => (await client.query(sql, params)).rows;
 
 // 요청 범위(scope)에 필요한 데이터만 읽어 업무 로직이 쓰는 db 객체 형태로 만듦

@@ -1,0 +1,69 @@
+# ============================================================
+# CI: GitHub 에 올릴 때마다 자동으로 빌드 + 서버 시험
+#   - main 에 올라가거나 PR 이 생기면 실행
+#   - 시험은 GitHub 가 잠깐 띄우는 빈 PostgreSQL 에서 실행 (실서비스 DB 와 무관)
+# CD(배포)는 Vercel 이 담당: main 에 합쳐지면 자동으로 실서비스 배포
+# ============================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: 빌드 · 서버 시험
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: uffice_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: 의존성 설치
+        run: |
+          npm ci
+          npm ci --prefix frontend
+
+      - name: 화면 빌드 (데모 모드)
+        run: npm run build
+
+      - name: 화면 빌드 (서버 모드)
+        run: npm run build
+        env:
+          VITE_API_MODE: server
+
+      - name: 서버 시험 (권한·휴무·전자서명·동시 등록)
+        run: npm test
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/uffice_ci
