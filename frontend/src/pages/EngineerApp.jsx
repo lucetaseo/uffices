@@ -151,6 +151,7 @@ function MyOffs() {
   const [offs, setOffs] = useState([]);
   const [busy, setBusy] = useState({});
   const [target, setTarget] = useState(null);
+  const [notice, setNotice] = useState('');
 
   const from = toDateKey(new Date(year, month - 1, 1));
   const to = toDateKey(new Date(year, month, 0));
@@ -182,25 +183,26 @@ function MyOffs() {
 
   const offOn = (date) => offs.find((o) => o.date === date);
 
+  // 오류는 휴무 창(OffModal) 안에 표시됩니다
   const save = async ({ period, reason }) => {
-    try {
-      await engineerApp.setMyOff({ date: target, period, reason });
-      setTarget(null);
-      load();
-    } catch (e) {
-      handleError(e);
-    }
+    await engineerApp.setMyOff({ date: target, period, reason });
+    setTarget(null);
+    load();
   };
 
   const cancel = async () => {
-    if (!window.confirm('휴무를 취소하시겠습니까?')) return;
-    try {
-      await engineerApp.cancelMyOff(target);
-      setTarget(null);
-      load();
-    } catch (e) {
-      handleError(e);
+    await engineerApp.cancelMyOff(target);
+    setTarget(null);
+    load();
+  };
+
+  const pick = (date) => {
+    if (date < today()) {
+      setNotice('지난 날짜는 휴무를 등록·취소할 수 없습니다. 오늘 이후 날짜를 눌러 주세요.');
+      return;
     }
+    setNotice('');
+    setTarget(date);
   };
 
   return (
@@ -211,6 +213,7 @@ function MyOffs() {
         <button type="button" className="btn-month-nav" onClick={() => move(1)}>&gt;</button>
       </div>
       <p className="sub-text">날짜를 눌러 휴무(오전/오후/종일)를 등록하세요. 일정이 배정된 시간대는 휴무를 등록할 수 없습니다.</p>
+      {notice && <p className="off-error" role="alert">{notice}</p>}
       <div className="calendar-grid-wrapper">
         <div className="calendar-weekdays">
           {WEEKDAYS.map((w, i) => (
@@ -226,7 +229,8 @@ function MyOffs() {
               <div
                 key={date}
                 className={`calendar-cell mini ${date === today() ? 'today-cell' : ''} ${past ? 'past-cell' : ''}`}
-                onClick={() => !past && setTarget(date)}
+                role="button"
+                onClick={() => pick(date)}
               >
                 <div className="day-number">{Number(date.slice(8))}</div>
                 {off && <span className={`off-chip off-${off.period}`}>{OFF_LABEL[off.period]}</span>}

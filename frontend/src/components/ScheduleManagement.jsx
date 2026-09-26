@@ -155,25 +155,17 @@ export default function ScheduleManagement() {
   };
 
   // ---------- 휴무 ----------
+  // 오류·취소 확인은 휴무 창(OffModal) 안에 표시됩니다
   const saveOff = async ({ engineerId, period, reason }) => {
-    try {
-      await offApi.set({ engineerId, date: offTarget.date, period, reason });
-      setOffTarget(null);
-      load();
-    } catch (e) {
-      handleError(e);
-    }
+    await offApi.set({ engineerId, date: offTarget.date, period, reason });
+    setOffTarget(null);
+    load();
   };
 
   const cancelOff = async (engineerId) => {
-    if (!window.confirm('등록된 휴무를 취소하시겠습니까?')) return;
-    try {
-      await offApi.remove({ engineerId, date: offTarget.date });
-      setOffTarget(null);
-      load();
-    } catch (e) {
-      handleError(e);
-    }
+    await offApi.remove({ engineerId, date: offTarget.date });
+    setOffTarget(null);
+    load();
   };
 
   const exportDay = () =>

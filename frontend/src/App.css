@@ -2077,6 +2077,17 @@ body {
   cursor: pointer;
 }
 
+.off-error {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
 .off-modal .input-text.full {
   width: 100%;
   margin: 6px 0;
