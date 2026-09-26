@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { ESIGN_STATUS } from '../constants.js';
 import ContractDocument from './ContractDocument.jsx';
 import KakaoModal from './KakaoModal.jsx';
+import { backdrop } from '../utils/backdrop.js';
 
 // 계약서 보기 + 전자서명 요청
 export default function ContractViewModal({ contractId, onClose, onChanged }) {
@@ -50,7 +51,7 @@ export default function ContractViewModal({ contractId, onClose, onChanged }) {
 
   return (
     <>
-    <div className="modal-overlay" onMouseDown={onClose}>
+    <div className="modal-overlay" {...backdrop(onClose)}>
       <div className="customer-reg-modal wide printable" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-top-bar no-print">
           <h3>&gt; 계약서 보기 — {status}</h3>

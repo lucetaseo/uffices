@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/AuthContext.jsx';
 import { CATEGORIES, DEFAULT_SCHEDULE_SETTINGS } from '../../constants.js';
 import { formatPhone, won } from '../../utils/format.js';
 import Pagination from '../../components/Pagination.jsx';
+import { backdrop } from '../../utils/backdrop.js';
 
 export const PRODUCT_KINDS = ['패키지', '추가시공품목', '무료시공'];
 
@@ -191,7 +192,7 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
       <Pagination page={page} total={filtered.length} pageSize={PAGE_SIZE} onChange={setPage} />
 
       {form && (
-        <div className="modal-overlay" onMouseDown={() => setForm(null)}>
+        <div className="modal-overlay" {...backdrop(() => setForm(null))}>
           <div className="customer-reg-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modal-top-bar">
               <h3>&gt; {title} {form.id ? '수정' : '등록'}</h3>

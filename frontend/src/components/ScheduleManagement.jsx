@@ -15,6 +15,7 @@ import { downloadExcel } from '../utils/excel.js';
 import KakaoModal from './KakaoModal.jsx';
 import ContractViewModal from './ContractViewModal.jsx';
 import OffModal from './OffModal.jsx';
+import { backdrop } from '../utils/backdrop.js';
 
 const CATEGORY_SHORT = { 청소: '청', 줄눈: '줄', 나노코팅: '나', 탄성: '탄', 새집증후군: '새', 기타: '기' };
 const short = (category) => (CATEGORY_SHORT[category] ? `${CATEGORY_SHORT[category]})` : '');
@@ -422,7 +423,7 @@ export default function ScheduleManagement() {
       </div>
 
       {editItem && (
-        <div className="modal-overlay" onMouseDown={() => setEditItem(null)}>
+        <div className="modal-overlay" {...backdrop(() => setEditItem(null))}>
           <div className="customer-reg-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modal-top-bar">
               <h3>
