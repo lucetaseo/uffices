@@ -8,6 +8,8 @@
 body {
   margin: 0;
   padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Malgun Gothic", Arial, sans-serif;
+  background: #f4f6fb;
 }
 
 .app-container {
@@ -1876,4 +1878,340 @@ body {
   border: 1px solid #fde68a;
   padding: 2px 8px;
   border-radius: 10px;
+}
+
+/* ==========================================
+   8. 계약서 작성 화면 / 기사 휴무 / 기사모바일
+   ========================================== */
+.form-section-title {
+  font-size: 15px;
+  margin: 26px 0 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #1a6fe0;
+}
+
+.info-guide {
+  margin-left: 12px;
+  font-size: 12px;
+  color: #555;
+}
+
+.orange-guide {
+  color: #ea580c;
+  font-size: 12px;
+  margin: 0 0 8px;
+  line-height: 1.7;
+}
+
+.text-blue {
+  color: #1a6fe0;
+}
+
+.contract-editor .form-grid-table .label-col {
+  width: 130px;
+}
+
+.schedule-step-row td {
+  vertical-align: middle;
+}
+
+.assign-type {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 6px;
+  font-weight: normal;
+}
+
+.mobile-cell {
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.off-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  white-space: pre-line;
+}
+
+.line-items {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.line-items th {
+  background: #f5f7fb;
+  padding: 6px;
+  border-bottom: 1px solid #dce1e8;
+}
+
+.line-items td {
+  padding: 4px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.history-table td {
+  font-size: 12px;
+  vertical-align: top;
+}
+
+.mobile-chip {
+  margin-left: 4px;
+  font-size: 10px;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 6px;
+  padding: 0 5px;
+}
+
+.approval {
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.ap-ok { color: #1a6fe0; }
+.ap-wait { color: #d97706; }
+.ap-no { color: #e11d48; }
+
+.doc-status {
+  text-align: center;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.doc-lines {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 6px;
+}
+
+.doc-lines td {
+  border: none !important;
+  border-bottom: 1px dashed #e2e8f0 !important;
+  padding: 4px 0 !important;
+}
+
+/* 휴무 표시: 종일(진한 파랑) / 오전(하늘) / 오후(보라) */
+.off-chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-right: 3px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.off-DAY { background: #1d4ed8; color: #fff; }
+.off-AM { background: #bae6fd; color: #075985; }
+.off-PM { background: #ddd6fe; color: #5b21b6; }
+
+.off-box {
+  background: #1a6fe0;
+  color: #fff;
+  border-radius: 3px;
+  padding: 3px 4px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.off-box-title {
+  font-weight: bold;
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.off-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.off-box .off-DAY { background: #fff; color: #1d4ed8; }
+
+.day-off-list {
+  padding: 8px 12px;
+  background: #eff6ff;
+  border-bottom: 1px solid #dbeafe;
+  font-size: 13px;
+}
+
+.day-off-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  flex-wrap: wrap;
+}
+
+.off-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.off-modal-head h3 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.off-guide {
+  color: #e11d48;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.btn-off-cancel {
+  background: #ef1c1c;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.off-modal .input-text.full {
+  width: 100%;
+  margin: 6px 0;
+  padding: 10px;
+}
+
+.off-periods {
+  margin: 10px 0 4px;
+}
+
+.modal-actions.center {
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.btn-dark-lg.sm.cancel {
+  background: #666;
+}
+
+/* 기사모바일 */
+.engineer-app {
+  min-height: 100vh;
+  background: #f4f6fb;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.engineer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1a6fe0;
+  color: #fff;
+  padding: 14px 16px;
+}
+
+.sub-text.light {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.engineer-tabs {
+  display: flex;
+  background: #fff;
+  border-bottom: 1px solid #dce1e8;
+}
+
+.engineer-tabs button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: none;
+  font-size: 15px;
+  font-weight: bold;
+  color: #666;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+}
+
+.engineer-tabs button.active {
+  color: #1a6fe0;
+  border-bottom-color: #1a6fe0;
+}
+
+.engineer-body {
+  padding: 12px 16px 40px;
+}
+
+.engineer-date {
+  margin: 18px 0 8px;
+  font-size: 14px;
+}
+
+.engineer-date.is-today {
+  color: #1a6fe0;
+}
+
+.engineer-card {
+  background: #fff;
+  border: 1px solid #dce1e8;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.engineer-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.engineer-balance {
+  font-size: 13px;
+  color: #334155;
+}
+
+.engineer-report {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.engineer-report .input-text {
+  flex: 1;
+  min-width: 110px;
+  padding: 8px;
+}
+
+.calendar-cell.mini {
+  min-height: 62px;
+}
+
+.calendar-cell.past-cell {
+  background: #f8fafc;
+  color: #aaa;
+  cursor: default;
+}
+
+/* 달력: 휴무/기사 이름이 잘리지 않도록 폭 확대 + 줄바꿈 허용 */
+.calendar-left-section {
+  width: 640px;
+}
+
+.off-line {
+  white-space: normal;
+  word-break: keep-all;
+  line-height: 1.35;
+}
+
+.schedule-badge {
+  white-space: normal;
+  word-break: keep-all;
+  font-size: 11px;
 }

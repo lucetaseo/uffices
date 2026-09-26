@@ -17,12 +17,14 @@ export const ROLES = {
   SUPER: 'SUPER',
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
+  ENGINEER: 'ENGINEER', // 시공기사 (기사모바일 전용, 업무 메뉴 권한 없음)
 };
 
 export const ROLE_LABELS = {
   SUPER: '운영자',
   ADMIN: '관리자',
   MANAGER: '실장',
+  ENGINEER: '기사',
 };
 
 export const PERMISSIONS = [
@@ -31,6 +33,7 @@ export const PERMISSIONS = [
   { key: 'contract.edit', group: '계약관리', label: '계약 수정' },
   { key: 'contract.delete', group: '계약관리', label: '계약 삭제/휴지통' },
   { key: 'contract.amount', group: '계약관리', label: '금액·입금 정보 보기' },
+  { key: 'contract.approve', group: '계약관리', label: '계약 승인/미승인 처리' },
   { key: 'esign.send', group: '전자계약', label: '전자계약 서명요청' },
   { key: 'customer.view', group: '계약자관리', label: '계약자 조회' },
   { key: 'customer.edit', group: '계약자관리', label: '계약자 등록/수정/삭제' },

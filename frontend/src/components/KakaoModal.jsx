@@ -11,8 +11,8 @@ const TEMPLATES = {
     targets: ['고객', '기사'],
     render: ({ brand, contract, engineer, target }) =>
       target === '기사'
-        ? `[${brand}] ${engineer?.engineerName || '기사'}님, 신규 시공 건이 배정되었습니다.\n일정: ${engineer?.date || '미정'} ${engineer?.time || ''}\n현장: ${formatAddress(contract)}\n고객: ${contract.customerName} (${contract.customerPhone})`
-        : `[${brand}] ${contract.customerName}님, 담당 시공기사(${engineer?.engineerName || '배정중'})님이 배정되었습니다.\n시공일정: ${engineer?.date || '미정'} ${engineer?.time || ''}`,
+        ? `[${brand}] ${engineer?.assigneeName || '기사'}님, 신규 시공 건이 배정되었습니다.\n일정: ${engineer?.date || '미정'} ${engineer?.time || (engineer?.ampm === 'AM' ? '오전' : engineer?.ampm === 'PM' ? '오후' : '')}\n현장: ${formatAddress(contract)}\n고객: ${contract.customerName} (${contract.customerPhone})`
+        : `[${brand}] ${contract.customerName}님, 담당 시공기사(${engineer?.assigneeName || '배정중'})님이 배정되었습니다.\n시공일정: ${engineer?.date || '미정'} ${engineer?.time || (engineer?.ampm === 'AM' ? '오전' : engineer?.ampm === 'PM' ? '오후' : '')}`,
   },
   계약완료: {
     label: '계약완료 안내',
@@ -99,7 +99,7 @@ export default function KakaoModal({ contract, initialTemplate = '기사배정',
             <div className="form-group">
               <label>시공 회차</label>
               <div className="radio-btn-group">
-                {contract.schedules.map((s, i) => tag('talkStep', i, step, setStep, `${i + 1}차 ${s.engineerName || '미배정'}`))}
+                {contract.schedules.map((s, i) => tag('talkStep', i, step, setStep, `${i + 1}차 ${s.assigneeName || '미배정'}`))}
               </div>
             </div>
           )}

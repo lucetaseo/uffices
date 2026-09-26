@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { ESIGN_STATUS, WORK_STATUS } from '../constants.js';
 import { addDays, formatKoreanDate, today } from '../utils/date.js';
 import { formatAddress } from '../utils/format.js';
+import { timeLabel } from '../utils/contract.js';
 
 // 진행상황: 오늘 기준 앞으로 7일 시공 예정 + 상태별/서명상태별 현황
 export default function ProgressStatus() {
@@ -28,7 +29,7 @@ export default function ProgressStatus() {
   const byStatus = countBy((c) => c.status);
   const byEsign = countBy((c) => c.esign?.status);
   const unassigned = all.filter(
-    (c) => c.status !== '취소' && c.status !== '시공완료' && c.schedules.some((s) => s.date && !s.engineerId),
+    (c) => c.status !== '취소' && c.status !== '시공완료' && c.schedules.some((s) => s.date && !s.assigneeName),
   );
 
   const upcomingRows = upcoming
@@ -87,10 +88,10 @@ export default function ProgressStatus() {
             {upcomingRows.map((r) => (
               <tr key={`${r.c.id}-${r.step}`}>
                 <td>{formatKoreanDate(r.date)}</td>
-                <td>{r.time || '-'}</td>
+                <td>{timeLabel(r) || '-'}</td>
                 <td>{r.c.category}</td>
                 <td>{r.step}차</td>
-                <td>{r.engineerName || <span className="text-red">미배정</span>}</td>
+                <td>{r.assigneeName || <span className="text-red">미배정</span>}</td>
                 <td>{r.c.customerName}</td>
                 <td className="text-left">{formatAddress(r.c)}</td>
                 <td>{r.c.status}</td>

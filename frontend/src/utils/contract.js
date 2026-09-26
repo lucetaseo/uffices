@@ -54,3 +54,39 @@ export function summarize(contracts) {
 // 가장 이른 시공예정일 (정렬용)
 export const firstScheduleDate = (c) =>
   (c.schedules || []).map((s) => s.date).filter(Boolean).sort()[0] || '';
+
+// 목록/계약서에 표시할 시공내용 요약 (상품내역 + 자유입력)
+export function itemsSummary(c) {
+  const lines = (c.lineItems || []).map((l) => `${l.name}${l.qty > 1 ? ` x${l.qty}` : ''}`);
+  return [...lines, c.items].filter(Boolean).join(' / ');
+}
+
+// 시간 선택 목록: 시간미정 / 오전(시간미정) / 오후(시간미정) / 설정된 간격의 시각
+export function timeOptions(settings) {
+  const out = [];
+  const toMin = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+  for (let m = toMin(settings.startTime); m <= toMin(settings.endTime); m += settings.interval) {
+    out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+  }
+  return out;
+}
+
+// select 값 <-> 일정 필드 변환 ('' | 'AM' | 'PM' | 'HH:mm')
+export const timeValueOf = (s) => s.time || s.ampm || '';
+export const timeFieldsOf = (value) =>
+  value === 'AM' || value === 'PM' ? { time: '', ampm: value } : { time: value || '', ampm: '' };
+
+export function timeLabel(s) {
+  if (s.time) return s.time;
+  if (s.ampm === 'AM') return '오전';
+  if (s.ampm === 'PM') return '오후';
+  return '';
+}
+
+// 일정의 시간대 ('AM' | 'PM' | null) — 서버 규칙(api/schedule.js)과 동일
+export function slotOf(s, settings) {
+  if (s.time) return s.time < settings.amEnd ? 'AM' : 'PM';
+  if (s.ampm === 'AM' || s.ampm === 'PM') return s.ampm;
+  return null;
+}
+export const offBlocks = (period, slot) => period === 'DAY' || slot === null || slot === period;

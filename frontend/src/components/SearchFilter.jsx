@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import {
+  APPROVAL_STATUS,
+  WORK_TYPES,
   BRANDS,
   CATEGORIES,
   DATE_TYPES,
@@ -23,6 +25,8 @@ export const EMPTY_FILTER = {
   category: '',
   receptionType: '',
   status: '',
+  approval: '',
+  workType: '',
   esignStatus: '',
   ownerId: '',
   engineerId: '',
@@ -139,7 +143,9 @@ export default function SearchFilter({ filter, onSearch, staff = [], engineers =
           {select('category', '구분', CATEGORIES)}
           {select('sort', null, SORT_OPTIONS)}
           {select('receptionType', '접수형태', RECEPTION_TYPES)}
+          {select('approval', '승인구분', APPROVAL_STATUS)}
           {select('status', '시공상태', WORK_STATUS)}
+          {select('workType', '시공종류', WORK_TYPES)}
           {select('esignStatus', '전자계약상태', Object.values(ESIGN_STATUS))}
           {staff.length > 0 && select('ownerId', '작성자선택', staff.map((s) => ({ value: String(s.id), label: s.name })))}
           {select('engineerId', '시공담당(기사)', engineers.map((e) => ({ value: String(e.id), label: `${e.name}(${e.category})` })))}

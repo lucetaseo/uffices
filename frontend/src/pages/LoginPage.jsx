@@ -61,7 +61,7 @@ export default function LoginPage() {
 
         {import.meta.env.DEV && (
           <div className="login-demo">
-            테스트 계정 — 운영자: super / super1234 · 관리자: admin / admin1234 · 실장: manager / manager1234
+            테스트 계정 — 운영자: super / super1234 · 관리자: admin / admin1234 · 실장: manager / manager1234 · 기사: gong / gong1234
           </div>
         )}
       </div>

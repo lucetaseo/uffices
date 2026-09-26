@@ -4,11 +4,11 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { ROLES, isOwnScopeOnly } from '../auth/permissions.js';
 import SearchFilter, { EMPTY_FILTER } from '../components/SearchFilter.jsx';
 import ContractTable from '../components/ContractTable.jsx';
-import ContractModal from '../components/ContractModal.jsx';
+import ContractEditor from './ContractEditor.jsx';
 import ContractViewModal from '../components/ContractViewModal.jsx';
 import KakaoModal from '../components/KakaoModal.jsx';
 import Pagination from '../components/Pagination.jsx';
-import { calcAmounts, summarize } from '../utils/contract.js';
+import { calcAmounts, itemsSummary, summarize, timeLabel } from '../utils/contract.js';
 import { formatAddress, won } from '../utils/format.js';
 import { downloadExcel } from '../utils/excel.js';
 
@@ -35,7 +35,7 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
   const [engineers, setEngineers] = useState([]);
   const [staff, setStaff] = useState([]);
 
-  const [editTarget, setEditTarget] = useState(null); // null=닫힘, 'new' 또는 계약객체
+  const [editTarget, setEditTarget] = useState(null); // null=목록, 'new' 또는 계약객체 → 계약서 작성 화면
   const [viewId, setViewId] = useState(null);
   const [kakaoTarget, setKakaoTarget] = useState(null);
 
@@ -95,24 +95,24 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
       return next;
     });
 
-  const bulk = async (action, confirmMsg) => {
+  const bulk = async (action, confirmMsg, ...args) => {
     if (!selectedIds.size) {
       alert('선택된 계약이 없습니다.');
       return;
     }
     if (!window.confirm(`${selectedIds.size}건을 ${confirmMsg}`)) return;
     try {
-      await contractApi[action]([...selectedIds]);
+      await contractApi[action]([...selectedIds], ...args);
       await load();
     } catch (e) {
       handleError(e);
     }
   };
 
-  const handleSaved = async (saved, isEdit) => {
+  const closeEditor = async (saved, isEdit) => {
     setEditTarget(null);
     await load();
-    if (!isEdit && window.confirm(`계약 No.${saved.no} 이(가) 등록되었습니다.\n바로 계약서를 열어 고객 전자서명을 요청하시겠습니까?`)) {
+    if (saved && !isEdit && can('esign.send') && window.confirm('바로 계약서를 열어 고객 전자서명을 요청하시겠습니까?')) {
       setViewId(saved.id);
     }
   };
@@ -129,14 +129,21 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
           시공상태: c.status,
           전자계약: c.esign?.status,
           계약일: c.contractDate,
-          시공예정일: c.schedules.map((s) => s.date && `${s.date} ${s.time}`.trim()).filter(Boolean).join(', ') || '미정',
-          시공담당: c.schedules.map((s) => s.engineerName).filter(Boolean).join(', ') || '미배정',
+          시공종류: c.workType,
+          계약승인: c.approval,
+          시공예정일: c.schedules.map((s) => s.date && `${s.date} ${timeLabel(s)}`.trim()).filter(Boolean).join(', ') || '미정',
+          시공담당: c.schedules.map((s) => s.assigneeName).filter(Boolean).join(', ') || '미배정',
+          모바일웹: c.schedules.map((s) => s.mobileStatus || '입력 전').join(', '),
+          입주예정일: c.moveInDate,
           시공완료일: c.completedDate,
           취소일: c.canceledDate,
           계약자: c.customerName,
           연락처: c.customerPhone,
+          연락처2: c.customerPhone2,
           '아파트명/현장': formatAddress(c),
-          시공내용: c.items,
+          평수: c.area,
+          시공내용: itemsSummary(c),
+          취소사유: c.cancelReason,
           작성자: c.ownerName,
         };
         if (showAmount) {
@@ -176,6 +183,16 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
         )}
       </div>
     );
+
+  if (editTarget) {
+    return (
+      <ContractEditor
+        contractId={editTarget === 'new' ? null : editTarget.id}
+        engineers={engineers}
+        onClose={closeEditor}
+      />
+    );
+  }
 
   return (
     <div className="page-card">
@@ -232,10 +249,20 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
         )}
       </div>
 
-      {can('contract.delete') && (
+      {(can('contract.delete') || can('contract.approve')) && (
         <div className="bulk-bar">
           <span className="sub-text">선택 {selectedIds.size}건</span>
-          {trash ? (
+          {!trash && can('contract.approve') && (
+            <>
+              <button type="button" className="btn-outline-action" onClick={() => bulk('setApproval', '승인 처리하시겠습니까?', '승인')}>
+                선택 승인
+              </button>
+              <button type="button" className="btn-outline-action" onClick={() => bulk('setApproval', '미승인 처리하시겠습니까?', '미승인')}>
+                선택 미승인
+              </button>
+            </>
+          )}
+          {!can('contract.delete') ? null : trash ? (
             <>
               <button type="button" className="btn-outline-action" onClick={() => bulk('restore', '복구하시겠습니까?')}>
                 복구
@@ -268,14 +295,6 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
         </>
       )}
 
-      {editTarget && (
-        <ContractModal
-          contract={editTarget === 'new' ? null : editTarget}
-          engineers={engineers}
-          onClose={() => setEditTarget(null)}
-          onSaved={handleSaved}
-        />
-      )}
       {viewId && <ContractViewModal contractId={viewId} onClose={() => setViewId(null)} onChanged={load} />}
       {kakaoTarget && <KakaoModal contract={kakaoTarget} onClose={() => setKakaoTarget(null)} />}
     </div>

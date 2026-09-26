@@ -1,5 +1,5 @@
 import React from 'react';
-import { calcAmounts } from '../utils/contract.js';
+import { calcAmounts, itemsSummary, timeLabel } from '../utils/contract.js';
 import { formatAddress, won } from '../utils/format.js';
 import { ESIGN_STATUS } from '../constants.js';
 
@@ -7,11 +7,14 @@ const CIRCLED = ['①', '②', '③'];
 
 const STATUS_CLASS = {
   미정: 'st-gray',
-  확정: 'st-blue',
-  시공중: 'st-orange',
+  해피콜완료: 'st-blue',
+  배정: 'st-blue',
   시공완료: 'st-green',
+  시공연기: 'st-orange',
   취소: 'st-red',
 };
+
+const APPROVAL_CLASS = { 승인: 'ap-ok', 승인대기: 'ap-wait', 미승인: 'ap-no' };
 
 const ESIGN_CLASS = {
   [ESIGN_STATUS.NONE]: 'es-none',
@@ -69,7 +72,10 @@ export default function ContractTable({ contracts, selectedIds, onToggle, onTogg
                 </td>
                 <td data-label="번호" className="nowrap-cell">{item.no}</td>
                 <td data-label="브랜드" className="nowrap-cell">{item.brand}</td>
-                <td data-label="구분" className="nowrap-cell">{item.category}</td>
+                <td data-label="구분" className="nowrap-cell">
+                  {item.category}
+                  {item.workType && item.workType !== '시공' && <div className="sub-text">{item.workType}</div>}
+                </td>
                 <td data-label="접수형태" className="nowrap-cell">{item.receptionType}</td>
                 <td data-label="시공상태">
                   <span className={`status-chip ${STATUS_CLASS[item.status] || ''}`}>{item.status}</span>
@@ -77,25 +83,29 @@ export default function ContractTable({ contracts, selectedIds, onToggle, onTogg
                 <td data-label="시공예정일" className="nowrap text-left">
                   {item.schedules.map((s, i) => (
                     <div key={i}>
-                      {CIRCLED[i]} {s.date ? `${s.date}${s.time ? ` ${s.time}` : ''}` : '미정'}
+                      {CIRCLED[i]} {s.date ? `${s.date} ${timeLabel(s)}`.trim() : '미정'}
                     </div>
                   ))}
                 </td>
                 <td data-label="시공담당" className="nowrap text-left">
                   {item.schedules.map((s, i) => (
                     <div key={i}>
-                      {CIRCLED[i]} {s.engineerName || '미배정'}
+                      {CIRCLED[i]} {s.assigneeName || '미배정'}
+                      {s.mobileStatus && <span className="mobile-chip">{s.mobileStatus}</span>}
                     </div>
                   ))}
                 </td>
                 <td data-label="계약자" className="nowrap">
-                  <div className="bold-text">{item.customerName}</div>
+                  <div className="bold-text">
+                    {item.customerName}{' '}
+                    <span className={`approval ${APPROVAL_CLASS[item.approval] || ''}`}>({item.approval})</span>
+                  </div>
                   <div className="sub-text">{item.customerPhone}</div>
                   <span className={`esign-chip ${ESIGN_CLASS[item.esign?.status] || ''}`}>{item.esign?.status}</span>
                 </td>
                 <td data-label="아파트명" className="text-left apt-cell">
                   <div>{formatAddress(item)}</div>
-                  {item.items && <div className="sub-text ellipsis">{item.items}</div>}
+                  {itemsSummary(item) && <div className="sub-text ellipsis">{itemsSummary(item)}</div>}
                   <div className="sub-text">
                     계약일 {item.contractDate} · 작성 {item.ownerName}
                   </div>

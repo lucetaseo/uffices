@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { apartments, engineers, products, teams } from '../../api/index.js';
+import { apartments, engineers, products, scheduleSettings, teams } from '../../api/index.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { CATEGORIES } from '../../constants.js';
+import { CATEGORIES, DEFAULT_SCHEDULE_SETTINGS } from '../../constants.js';
 import { formatPhone, won } from '../../utils/format.js';
 import Pagination from '../../components/Pagination.jsx';
 
@@ -79,6 +79,17 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
           <label className="radio-item">
             <input type="checkbox" checked={value !== false} onChange={(e) => setField(f.key, e.target.checked)} /> {f.checkLabel}
           </label>
+        );
+      case 'password':
+        return (
+          <input
+            type="password"
+            className="input-text"
+            value={value}
+            autoComplete="new-password"
+            placeholder={form.id && form.hasPassword ? '변경할 때만 입력' : ''}
+            onChange={(e) => setField(f.key, e.target.value)}
+          />
         );
       case 'tel':
         return <input type="tel" className="input-text" value={value} onChange={(e) => setField(f.key, formatPhone(e.target.value))} placeholder="010-0000-0000" required={f.required} />;
@@ -216,33 +227,40 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
 }
 
 export function EngineerSettings() {
+  const [crewTeams, setCrewTeams] = useState([]);
+  useEffect(() => {
+    teams.list().then((t) => setCrewTeams(t.filter((x) => x.kind === '시공팀'))).catch(() => {});
+  }, []);
+  const teamName = (id) => crewTeams.find((t) => t.id === id)?.name || '-';
   return (
     <MasterPage
       title="기사 관리"
       notices={[
         '시공을 진행하는 기사 정보를 등록하는 페이지입니다. 계약 등록/일정관리에서 기사를 배정할 때 사용됩니다.',
-        '아이디는 추후 기사 전용 모바일 페이지(기사모바일) 로그인에 사용됩니다.',
+        "아이디와 비밀번호를 등록하면 기사가 같은 로그인 화면에서 '기사모바일'(내 일정 확인, 시공상태 보고, 휴무 설정)을 사용할 수 있습니다.",
         '계약에 배정된 적이 있는 기사는 삭제 시 기록 보존을 위해 “미사용” 처리됩니다.',
       ]}
       api={engineers}
       searchKeys={['name', 'phone', 'loginId']}
       filters={[{ key: 'category', placeholder: '품목', options: CATEGORIES }]}
-      emptyForm={{ name: '', category: CATEGORIES[0], phone: '', loginId: '', email: '', address: '', memo: '', active: true }}
+      emptyForm={{ name: '', category: CATEGORIES[0], phone: '', loginId: '', password: '', teamId: '', email: '', address: '', memo: '', active: true }}
       removeConfirm={(r) => `[${r.name}] 기사를 삭제하시겠습니까?\n(배정 이력이 있으면 미사용 처리됩니다)`}
       columns={[
         { key: 'name', label: '이름', className: 'text-left bold-text' },
         { key: 'category', label: '품목' },
+        { key: 'teamId', label: '소속팀', render: (r) => (r.teamId ? teamName(r.teamId) : '-') },
         { key: 'loginId', label: '아이디' },
+        { key: 'hasPassword', label: '모바일 로그인', render: (r) => (r.loginId && r.hasPassword ? '가능' : <span className="sub-text">미설정</span>) },
         { key: 'phone', label: '연락처' },
-        { key: 'email', label: '이메일' },
-        { key: 'address', label: '주소', className: 'text-left' },
         { key: 'active', label: '사용', render: (r) => (r.active === false ? <span className="text-red">미사용</span> : '사용') },
       ]}
       fields={[
         { key: 'name', label: '이름', required: true },
         { key: 'category', label: '품목', type: 'select', options: CATEGORIES },
+        { key: 'teamId', label: '소속 시공팀', type: 'select', options: [{ value: '', label: '없음' }, ...crewTeams.map((t) => ({ value: String(t.id), label: t.name }))], help: '팀배정된 일정은 소속 기사 모두의 기사모바일에 표시됩니다.' },
         { key: 'phone', label: '연락처', type: 'tel', required: true },
-        { key: 'loginId', label: '아이디', help: '기사모바일 로그인용 (선택)' },
+        { key: 'loginId', label: '아이디', help: '기사모바일 로그인용 (영문/숫자)' },
+        { key: 'password', label: '비밀번호', type: 'password', help: '기사모바일 로그인 비밀번호 (4자 이상)' },
         { key: 'email', label: '이메일', type: 'email' },
         { key: 'address', label: '주소', wide: true },
         { key: 'memo', label: '메모', type: 'textarea' },
@@ -256,17 +274,22 @@ export function TeamSettings() {
   return (
     <MasterPage
       title="팀 관리"
-      notices={['상담팀/박람회팀/시공팀 등 부서를 관리합니다.', '사용자관리에서 계정마다 팀과 직책을 지정할 수 있습니다.']}
+      notices={[
+        '부서(상담팀/박람회팀 등)와 시공팀(스마일팀 등)을 관리합니다.',
+        '부서는 사용자관리에서 직원에게, 시공팀은 기사관리에서 기사에게 지정하며 계약서의 [팀배정]에 사용됩니다.',
+      ]}
       api={teams}
       searchKeys={['name', 'description']}
-      emptyForm={{ name: '', description: '' }}
+      emptyForm={{ name: '', kind: '부서', description: '' }}
       removeConfirm={(r) => `[${r.name}] 팀을 삭제하시겠습니까?\n소속된 사용자는 '팀 없음'으로 변경됩니다.`}
       columns={[
         { key: 'name', label: '팀명', className: 'bold-text' },
+        { key: 'kind', label: '종류' },
         { key: 'description', label: '설명', className: 'text-left' },
       ]}
       fields={[
         { key: 'name', label: '팀명', required: true },
+        { key: 'kind', label: '종류', type: 'select', options: ['부서', '시공팀'], help: "시공팀은 계약서 '팀배정'과 기사 소속팀에 사용됩니다." },
         { key: 'description', label: '설명', wide: true },
       ]}
     />
@@ -330,12 +353,75 @@ export function ApartmentSettings() {
 }
 
 export function ScheduleSettings() {
+  const { handleError, refresh } = useAuth();
+  const [form, setForm] = useState(null);
+
+  useEffect(() => {
+    scheduleSettings.get().then(setForm).catch(handleError);
+  }, [handleError]);
+
+  if (!form) return <div className="page-card page-loading">불러오는 중...</div>;
+
+  const save = async (e) => {
+    e.preventDefault();
+    try {
+      await scheduleSettings.save(form);
+      await refresh(); // 다른 화면의 시간 선택 목록에 바로 반영
+      alert('저장되었습니다.');
+    } catch (err) {
+      handleError(err);
+    }
+  };
+
+  const f = (key, props = {}) => (
+    <input className="input-text" value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} {...props} />
+  );
+
   return (
     <div className="page-card">
-      <h2>일정관리설정</h2>
-      <p className="sub-text">
-        이 화면은 참고 화면을 받은 뒤 구현할 예정입니다. (예: 기사별 휴무 등록, 하루 최대 배정 건수, 오전/오후 시간대 구분)
-      </p>
+      <div className="page-header">
+        <h2>일정관리설정</h2>
+        <ul className="notice-list">
+          <li>계약서/일정관리의 시간 선택 목록과 기사 휴무(오전/오후) 판단 기준을 설정합니다.</li>
+          <li>기사 1인 하루 최대 배정 건수를 정하면 초과 배정이 차단됩니다. (0 = 제한 없음)</li>
+        </ul>
+      </div>
+      <form onSubmit={save}>
+        <table className="form-grid-table narrow-table">
+          <tbody>
+            <tr>
+              <td className="label-col">오전/오후 기준</td>
+              <td className="input-col">
+                {f('amEnd', { type: 'time' })} 이전 시작 = 오전, 이후 = 오후
+              </td>
+            </tr>
+            <tr>
+              <td className="label-col">시간 선택 범위</td>
+              <td className="input-col inline-fields">
+                {f('startTime', { type: 'time' })} ~ {f('endTime', { type: 'time' })}
+              </td>
+            </tr>
+            <tr>
+              <td className="label-col">시간 간격</td>
+              <td className="input-col">
+                <select className="input-text" value={form.interval} onChange={(e) => setForm({ ...form, interval: Number(e.target.value) })}>
+                  {[10, 15, 20, 30, 60].map((m) => <option key={m} value={m}>{m}분</option>)}
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td className="label-col">하루 최대 배정</td>
+              <td className="input-col">
+                {f('maxPerDay', { type: 'number', min: 0, style: { width: 80 } })} 건 / 기사 1인
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div className="form-bottom-btns">
+          <button type="submit" className="btn-dark-lg">저장</button>
+          <button type="button" className="btn-dark-lg cancel" onClick={() => setForm({ ...DEFAULT_SCHEDULE_SETTINGS })}>기본값으로</button>
+        </div>
+      </form>
     </div>
   );
 }

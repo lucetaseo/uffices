@@ -9,6 +9,7 @@
 
 import { ROLES, DATA_SCOPES, DEFAULT_MANAGER_PERMISSIONS } from '../auth/permissions.js';
 import { addDays, today } from '../utils/date.js';
+import { DEFAULT_SCHEDULE_SETTINGS } from '../constants.js';
 
 const DB_KEY = 'uffice.db.v1';
 
@@ -68,6 +69,7 @@ export async function resetDb() {
 }
 
 // 이전 버전 데이터에 새 테이블/필드 추가 (백엔드에서는 DB 마이그레이션 파일이 이 역할)
+// 샘플 데이터도 생성 후 이 함수를 거쳐 최신 형태로 맞춥니다.
 function migrate(db) {
   let changed = false;
   if (!db.teams) {
@@ -89,6 +91,58 @@ function migrate(db) {
       changed = true;
     }
   });
+
+  // v2: 계약서 작성 화면 개편 (시공종류/승인/입주예정일/팀배정/모바일웹 보고/상품내역/변경이력), 기사 휴무
+  if ((db.version || 1) < 2) {
+    const CATEGORY_MAP = { 코팅: '나노코팅' };
+    const RECEPTION_MAP = { 음성: '음성계약', 온라인: '사전계약', 소개: '사전계약', 기타: '사전계약' };
+    const STATUS_MAP = { 확정: '배정', 시공중: '배정' };
+    db.engineerOffs = db.engineerOffs || [];
+    db.companies.forEach((c) => {
+      c.scheduleSettings = c.scheduleSettings || { ...DEFAULT_SCHEDULE_SETTINGS };
+      if (!db.teams.some((t) => t.companyId === c.id && t.kind === '시공팀')) {
+        ['스마일팀', '더 클래스'].forEach((name) => {
+          db.teams.push({ id: nextId(db, 'teams'), companyId: c.id, name, description: '시공 협력팀', kind: '시공팀', createdAt: new Date().toISOString() });
+        });
+      }
+    });
+    db.teams.forEach((t) => {
+      t.kind = t.kind || '부서';
+    });
+    db.engineers.forEach((e) => {
+      e.category = CATEGORY_MAP[e.category] || e.category;
+      if (e.teamId === undefined) e.teamId = null;
+      if (e.passwordHash === undefined) e.passwordHash = null;
+    });
+    db.products.forEach((p) => {
+      p.category = CATEGORY_MAP[p.category] || p.category;
+    });
+    db.contracts.forEach((c) => {
+      c.category = CATEGORY_MAP[c.category] || c.category;
+      c.receptionType = RECEPTION_MAP[c.receptionType] || c.receptionType;
+      c.status = STATUS_MAP[c.status] || c.status;
+      c.workType = c.workType || '시공';
+      c.approval = c.approval || '승인';
+      c.customerPhone2 = c.customerPhone2 || '';
+      c.moveInDate = c.moveInDate || '';
+      c.area = c.area || '';
+      c.cancelReason = c.cancelReason || '';
+      c.happyCallMemo = c.happyCallMemo || '';
+      c.lineItems = c.lineItems || [];
+      c.history = c.history || [];
+      c.schedules = (c.schedules || []).map((s) => ({
+        assignType: 'engineer',
+        teamId: null,
+        mobileStatus: '',
+        mobileMemo: '',
+        reportedAt: null,
+        ...s,
+      }));
+      c.payments = (c.payments || []).map((p, i) => ({ kind: i === 0 ? '계약금' : '잔금', memo: '', ...p }));
+    });
+    db.version = 2;
+    changed = true;
+  }
   return changed;
 }
 
@@ -333,5 +387,39 @@ async function buildSeed() {
       deletedAt: null,
     });
   }
+
+  migrate(db);
+
+  // 기사모바일 데모 계정 (공두환 기사) + 스마일팀 소속
+  const smile = db.teams.find((x) => x.name === '스마일팀');
+  const gong = db.engineers.find((e) => e.name === '공두환');
+  gong.loginId = 'gong';
+  gong.passwordHash = await hashPassword('gong1234');
+  gong.teamId = smile.id;
+  db.engineers.find((e) => e.name === '김준영').teamId = smile.id;
+
+  // 휴무 샘플 (배정된 일정과 겹치지 않는 날만)
+  [
+    ['박영노', 1, 'DAY', '개인 사정'],
+    ['김준영', 2, 'AM', '병원'],
+    ['양정훈', 2, 'PM', '가족 행사'],
+    ['문종만', 4, 'DAY', '휴가'],
+    ['공두환', 6, 'AM', '자재 수령'],
+  ].forEach(([name, plus, period, reason]) => {
+    const e = db.engineers.find((x) => x.name === name);
+    const date = addDays(t, plus);
+    const busy = db.contracts.some((c) => c.schedules.some((sc) => sc.engineerId === e.id && sc.date === date));
+    if (busy) return;
+    db.engineerOffs.push({
+      id: nextId(db, 'engineerOffs'),
+      companyId: company.id,
+      engineerId: e.id,
+      date,
+      period,
+      reason,
+      createdBy: admin.id,
+      createdAt: now,
+    });
+  });
   return db;
 }

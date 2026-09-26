@@ -91,7 +91,7 @@ export default function SignPage({ token }) {
   return (
     <div className="sign-page">
       <div className="sign-card">
-        <ContractDocument contract={data.contract} company={data.company} />
+        <ContractDocument contract={data.contract} company={data.company} showStatus />
 
         {done ? (
           <div className="sign-done">✅ 서명이 완료되었습니다. 감사합니다.</div>

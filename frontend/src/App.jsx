@@ -7,6 +7,7 @@ import { formatKoreanDate, today } from './utils/date.js';
 
 import LoginPage from './pages/LoginPage.jsx';
 import SignPage from './pages/SignPage.jsx';
+import EngineerApp from './pages/EngineerApp.jsx';
 import ContractPage from './pages/ContractPage.jsx';
 import CustomerManagement from './components/CustomerManagement.jsx';
 import ScheduleManagement from './components/ScheduleManagement.jsx';
@@ -82,6 +83,7 @@ export default function App() {
 
   if (loading) return <div className="page-loading">불러오는 중...</div>;
   if (!user) return <LoginPage />;
+  if (user.role === ROLES.ENGINEER) return <EngineerApp />;
   return <MainLayout />;
 }
 

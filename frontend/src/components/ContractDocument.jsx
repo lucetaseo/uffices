@@ -1,5 +1,5 @@
 import React from 'react';
-import { calcAmounts } from '../utils/contract.js';
+import { calcAmounts, timeLabel } from '../utils/contract.js';
 import { formatAddress, won } from '../utils/format.js';
 
 // 계약 약관. 업체별 약관 관리는 '설정' 메뉴 확장 시 DB 로 옮길 예정입니다.
@@ -11,15 +11,22 @@ export const DEFAULT_TERMS = [
 ];
 
 // 계약서 본문. 내부 조회(ContractViewModal)와 고객 서명 페이지(SignPage)가 함께 사용합니다.
-export default function ContractDocument({ contract, company, showAmount = true }) {
+export default function ContractDocument({ contract, company, showAmount = true, showStatus = false }) {
   const a = calcAmounts(contract);
   const esign = contract.esign || {};
   return (
     <div className="contract-doc">
       <h2 className="doc-title">
-        {contract.brand} {contract.category} 시공 계약서
+        {contract.brand} {contract.category} {contract.workType && contract.workType !== '시공' ? `${contract.workType} ` : ''}시공 계약서
       </h2>
       <p className="doc-no">계약번호 No.{contract.no} · 계약일 {contract.contractDate}</p>
+      {showStatus && (
+        <div className="doc-status">
+          현재 진행상태 <strong>{contract.status}</strong>
+          {contract.status === '시공완료' && contract.completedDate && ` (${contract.completedDate})`}
+          {contract.status === '취소' && contract.cancelReason && ` — ${contract.cancelReason}`}
+        </div>
+      )}
 
       <table className="doc-table">
         <tbody>
@@ -39,18 +46,41 @@ export default function ContractDocument({ contract, company, showAmount = true 
           </tr>
           <tr>
             <th>시공 현장</th>
-            <td colSpan={3}>{formatAddress(contract)}</td>
+            <td>
+              {formatAddress(contract)}
+              {contract.area && ` · ${contract.area}평`}
+            </td>
+            <th>입주예정일</th>
+            <td>{contract.moveInDate || '-'}</td>
           </tr>
           <tr>
             <th>시공 내용</th>
-            <td colSpan={3} className="pre-wrap">{contract.items || '-'}</td>
+            <td colSpan={3}>
+              {(contract.lineItems || []).length > 0 && (
+                <table className="doc-lines">
+                  <tbody>
+                    {contract.lineItems.map((l, i) => (
+                      <tr key={i}>
+                        <td>
+                          <strong>{l.name}</strong>
+                          {l.detail && <div className="sub-text">{l.detail}</div>}
+                        </td>
+                        <td className="nowrap">{l.qty}개</td>
+                        {showAmount && !contract.amountHidden && <td className="text-right nowrap">{won(l.qty * l.unitPrice)}원</td>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <div className="pre-wrap">{contract.items || ((contract.lineItems || []).length ? '' : '-')}</div>
+            </td>
           </tr>
           <tr>
             <th>시공 일정</th>
             <td colSpan={3}>
               {contract.schedules.map((s, i) => (
                 <div key={i}>
-                  {i + 1}차: {s.date ? `${s.date} ${s.time || ''}` : '협의 후 확정'}
+                  {i + 1}차: {s.date ? `${s.date} ${timeLabel(s)}` : '협의 후 확정'}
                 </div>
               ))}
             </td>
