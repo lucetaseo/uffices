@@ -37,7 +37,7 @@
 > 실제 판매를 시작할 때 `UFFICE` 팀을 만들고 프로젝트를 옮기면 됩니다 (Settings → General → Transfer Project).
 
 1. https://vercel.com 에 GitHub 계정으로 로그인
-2. **Add New… → Project** → `lucetaseo/uffices` 옆 **Import**
+2. **Add New… → Project** → `lutaseo/uffices` 옆 **Import**
    - 목록에 없으면 "Adjust GitHub App Permissions" 에서 이 저장소 접근 허용
 3. 설정 화면에서 **Root Directory 는 그대로(`./`)**, Framework Preset 은 **Other** (빌드 설정은 `vercel.json` 에 이미 있음)
 4. **Environment Variables** 에 아래 값을 입력 (Environment 는 **Production** 만 체크 — 아래 "주의" 참고)

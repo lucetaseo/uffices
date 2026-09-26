@@ -1,6 +1,6 @@
 # UFFICE 유피스 — 전자계약 · 시공일정 관리
 
-[![CI](https://github.com/lucetaseo/uffices/actions/workflows/ci.yml/badge.svg)](https://github.com/lucetaseo/uffices/actions/workflows/ci.yml)
+[![CI](https://github.com/lutaseo/uffices/actions/workflows/ci.yml/badge.svg)](https://github.com/lutaseo/uffices/actions/workflows/ci.yml)
 
 인테리어 시공(줄눈·청소·탄성·새집증후군·나노코팅) 업체를 위한 **전자계약 + 시공일정 관리** 서비스입니다.
 여러 업체가 함께 쓰는 구조로, 운영자(우리)가 업체에 계정을 발급하고 업체 관리자가 직원(실장)에게 권한을 나눠 줍니다.
