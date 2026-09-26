@@ -28,6 +28,7 @@ import {
   calcAmounts,
   offBlocks,
   slotOf,
+  teamOffStatus,
   timeFieldsOf,
   timeOptions,
   timeValueOf,
@@ -421,9 +422,16 @@ export default function ContractEditor({ contractId, engineers, onClose }) {
                       {s.assignType === ASSIGN_TYPES.TEAM ? (
                         <select className="input-text" value={s.teamId} onChange={(e) => setStep(i, { teamId: e.target.value })}>
                           <option value="">팀선택</option>
-                          {crewTeams.map((t) => (
-                            <option key={t.id} value={t.id}>{t.name}</option>
-                          ))}
+                          {crewTeams.map((t) => {
+                            const st = s.date ? teamOffStatus(t.id, engineers, (id) => offOf(id, s.date), slot) : null;
+                            return (
+                              <option key={t.id} value={t.id} disabled={st?.allOff && String(t.id) !== String(s.teamId)}>
+                                {t.name}
+                                {st?.total ? ` (${st.total}명${st.offCount ? `, 휴무 ${st.offCount}명` : ''})` : ''}
+                                {st?.allOff ? ' — 전원 휴무' : ''}
+                              </option>
+                            );
+                          })}
                         </select>
                       ) : (
                         <select className="input-text" value={s.engineerId} onChange={(e) => setStep(i, { engineerId: e.target.value })}>
@@ -444,6 +452,11 @@ export default function ContractEditor({ contractId, engineers, onClose }) {
                       )}
                       <button type="button" className="btn-dark-sm" onClick={() => setStep(i, { engineerId: '', teamId: '' })}>초기화</button>
                     </div>
+                    {s.assignType === ASSIGN_TYPES.TEAM && s.teamId && s.date && teamOffStatus(s.teamId, engineers, (id) => offOf(id, s.date), slot).allOff && (
+                      <div className="text-red off-hint">
+                        선택한 팀은 이 시간대에 팀원 전원이 휴무입니다.{slot === null && ' 오전/오후 시간을 지정하면 배정할 수 있습니다.'}
+                      </div>
+                    )}
                     {blocked && (
                       <div className="text-red off-hint">
                         {engineers.find((en) => String(en.id) === String(s.engineerId))?.name || s.engineerName || '선택한 기사'} 기사는 이날 {OFF_LABEL[selectedOff.period]} 휴무입니다.

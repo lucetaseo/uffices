@@ -90,3 +90,13 @@ export function slotOf(s, settings) {
   return null;
 }
 export const offBlocks = (period, slot) => period === 'DAY' || slot === null || slot === period;
+
+// 팀배정용: 해당 시간대에 팀원 몇 명이 휴무인지 (전원 휴무일 때만 배정 불가 — 서버 규칙과 동일)
+export function teamOffStatus(teamId, engineers, offOf, slot) {
+  const members = engineers.filter((e) => String(e.teamId) === String(teamId));
+  const offCount = members.filter((m) => {
+    const off = offOf(m.id);
+    return off && offBlocks(off.period, slot);
+  }).length;
+  return { total: members.length, offCount, allOff: members.length > 0 && offCount === members.length };
+}

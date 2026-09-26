@@ -9,6 +9,9 @@
 //  - 오전 휴무 → 오후 일정만 가능 / 오후 휴무 → 오전 일정만 가능
 //    (시간대를 정하지 않은 일정은 어느 쪽인지 알 수 없으므로 배정 불가)
 //  - 반대로, 이미 배정된 일정과 겹치는 휴무는 등록할 수 없음 (일정을 먼저 옮겨야 함)
+//  - 팀배정: 팀원(사용 중인 소속 기사) 전원이 그 시간대에 휴무일 때만 배정 불가.
+//    팀원 한 명이라도 일할 수 있으면 배정 가능. 팀원이 없는 팀은 검사하지 않음.
+//    반대로 팀 일정이 있는 시간대에 마지막 남은 팀원이 휴무를 넣으려 하면 등록 불가.
 // ============================================================
 
 import { saveDb, nextId } from './storage.js';
@@ -54,9 +57,37 @@ function engineerSchedules(db, companyId, engineerId, date) {
   return out;
 }
 
-// 기사 배정 가능 여부 검사 (계약 저장·일정 수정 시 서버에서 호출)
+export const teamMembers = (db, companyId, teamId) =>
+  db.engineers.filter((e) => e.companyId === companyId && e.active !== false && e.teamId === teamId);
+
+// 팀원 전원이 해당 시간대에 휴무인지 (extraOff: 등록하려는 휴무를 미리 반영해 검사할 때)
+function wholeTeamOff(db, companyId, teamId, date, slot, extraOff) {
+  const members = teamMembers(db, companyId, teamId);
+  if (!members.length) return false;
+  return members.every((m) => {
+    if (extraOff && extraOff.engineerId === m.id) return offBlocks(extraOff.period, slot);
+    const off = db.engineerOffs.find((o) => o.companyId === companyId && o.engineerId === m.id && o.date === date);
+    return off && offBlocks(off.period, slot);
+  });
+}
+
+// 기사/팀 배정 가능 여부 검사 (계약 저장·일정 수정 시 서버에서 호출)
 export function assertAssignable(db, companyId, schedule, { contractId, stepIndex } = {}) {
-  if (schedule.assignType === 'team' || !schedule.engineerId || !schedule.date) return;
+  if (!schedule.date) return;
+  if (schedule.assignType === 'team') {
+    if (!schedule.teamId) return;
+    const settings = settingsOf(db.companies.find((c) => c.id === companyId));
+    const slot = slotOf(schedule, settings);
+    if (wholeTeamOff(db, companyId, schedule.teamId, schedule.date, slot)) {
+      const team = db.teams.find((t) => t.id === schedule.teamId);
+      throw new ApiError(
+        `${team?.name || '해당 팀'}은 ${schedule.date}${slot ? ` ${slot === 'AM' ? '오전' : '오후'}` : ''}에 팀원 전원이 휴무입니다.` +
+          (slot === null ? '\n오전/오후 또는 시간을 지정하면 일할 수 있는 시간대로 배정할 수 있습니다.' : ''),
+      );
+    }
+    return;
+  }
+  if (!schedule.engineerId) return;
   const engineer = db.engineers.find((e) => e.id === schedule.engineerId && e.companyId === companyId);
   if (!engineer) throw new ApiError('기사를 찾을 수 없습니다.');
   const settings = settingsOf(db.companies.find((c) => c.id === companyId));
@@ -105,6 +136,27 @@ function setOff(db, companyId, engineerId, { date, period, reason }, actor) {
     throw new ApiError(
       `${engineer.name} 기사는 ${date} ${OFF_LABEL[period]} 시간대에 배정된 일정이 있어 휴무를 등록할 수 없습니다.\n${list}\n일정을 다른 기사/날짜로 옮긴 후 다시 등록해 주세요.`,
     );
+  }
+
+  // 이 휴무로 팀원 전원이 쉬게 되는 팀 일정이 있으면 등록 불가
+  if (engineer.teamId) {
+    const extraOff = { engineerId: engineer.id, period };
+    const teamConflicts = [];
+    activeContracts(db, companyId).forEach((c) =>
+      c.schedules.forEach((s) => {
+        if (s.assignType === 'team' && s.teamId === engineer.teamId && s.date === date) {
+          const slot = slotOf(s, settings);
+          if (offBlocks(period, slot) && wholeTeamOff(db, companyId, s.teamId, date, slot, extraOff)) teamConflicts.push({ c, s });
+        }
+      }),
+    );
+    if (teamConflicts.length) {
+      const team = db.teams.find((t) => t.id === engineer.teamId);
+      const list = teamConflicts.map(({ c, s }) => `· No.${c.no} ${c.customerName} ${s.time || (s.ampm === 'AM' ? '오전' : s.ampm === 'PM' ? '오후' : '시간미정')}`).join('\n');
+      throw new ApiError(
+        `${engineer.name} 기사까지 휴무하면 ${team?.name || '소속 팀'} 팀원 전원이 쉬게 되어, 배정된 팀 일정을 진행할 수 없습니다.\n${list}\n일정을 옮기거나 다른 팀원과 조정해 주세요.`,
+      );
+    }
   }
 
   let off = db.engineerOffs.find((o) => o.companyId === companyId && o.engineerId === engineer.id && o.date === date);

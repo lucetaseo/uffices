@@ -8,7 +8,7 @@ import {
 } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { ASSIGN_TYPES, CATEGORIES, DEFAULT_SCHEDULE_SETTINGS, OFF_LABEL, WORK_STATUS } from '../constants.js';
-import { calcAmounts, offBlocks, slotOf, timeFieldsOf, timeLabel, timeOptions, timeValueOf } from '../utils/contract.js';
+import { calcAmounts, offBlocks, slotOf, teamOffStatus, timeFieldsOf, timeLabel, timeOptions, timeValueOf } from '../utils/contract.js';
 import { WEEKDAYS, formatKoreanDate, toDateKey, today } from '../utils/date.js';
 import { formatAddress, won } from '../utils/format.js';
 import { downloadExcel } from '../utils/excel.js';
@@ -462,7 +462,16 @@ export default function ScheduleManagement() {
                         {editItem.assignType === ASSIGN_TYPES.TEAM ? (
                           <select value={editItem.teamId} onChange={(e) => setEditItem({ ...editItem, teamId: e.target.value })} className="input-text">
                             <option value="">팀선택</option>
-                            {crewTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            {crewTeams.map((t) => {
+                              const st = teamOffStatus(t.id, engineers, offForEdit, editSlot);
+                              return (
+                                <option key={t.id} value={t.id} disabled={st.allOff && String(t.id) !== String(editItem.teamId)}>
+                                  {t.name}
+                                  {st.total ? ` (${st.total}명${st.offCount ? `, 휴무 ${st.offCount}명` : ''})` : ''}
+                                  {st.allOff ? ' — 전원 휴무' : ''}
+                                </option>
+                              );
+                            })}
                           </select>
                         ) : (
                           <select value={editItem.engineerId} onChange={(e) => setEditItem({ ...editItem, engineerId: e.target.value })} className="input-text">
