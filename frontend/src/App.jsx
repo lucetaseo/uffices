@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import './App.css';
 
 import { useAuth } from './auth/AuthContext.jsx';
+import { API_MODE } from './api/index.js';
 import { ROLES, ROLE_LABELS } from './auth/permissions.js';
 import { formatKoreanDate, today } from './utils/date.js';
 
@@ -176,9 +177,11 @@ function MainLayout() {
           )}
         </div>
         <div className="welcome">
-          <span className="demo-badge" title="백엔드 연결 전: 입력한 데이터는 이 브라우저에만 저장됩니다">
-            데모 모드 · 브라우저 저장
-          </span>
+          {API_MODE === 'demo' && (
+            <span className="demo-badge" title="서버 연결 전: 입력한 데이터는 이 브라우저에만 저장됩니다">
+              데모 모드 · 브라우저 저장
+            </span>
+          )}
           <span className="welcome-date">{formatKoreanDate(today())}</span>
           <span>
             {user.name}({ROLE_LABELS[user.role]})님 환영합니다.

@@ -25,8 +25,12 @@ export function AuthProvider({ children }) {
     setState({ user, company, loading: false });
   }, []);
 
-  const logout = useCallback(() => {
-    auth.logout();
+  const logout = useCallback(async () => {
+    try {
+      await auth.logout();
+    } catch {
+      // 서버 연결이 끊겨도 화면은 로그아웃 처리
+    }
     setState({ user: null, company: null, loading: false });
   }, []);
 

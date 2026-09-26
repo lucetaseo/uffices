@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { auth } from '../api/index.js';
+import { API_MODE, auth } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { ROLE_LABELS } from '../auth/permissions.js';
 
@@ -59,7 +59,7 @@ export default function SettingsPage() {
         브랜드·구분 코드, 알림톡 템플릿, 계약 약관 관리는 추후 설정 메뉴에 추가됩니다.
       </p>
 
-      {import.meta.env.DEV && (
+      {API_MODE === 'demo' && (
         <button type="button" className="btn-text-danger" style={{ marginTop: 10 }} onClick={resetDemo}>
           [개발용] 샘플 데이터 초기화
         </button>

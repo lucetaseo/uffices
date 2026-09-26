@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { API_MODE } from '../api/index.js';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -59,7 +60,7 @@ export default function LoginPage() {
           ⓘ 계정 발급 및 이용기간 문의는 운영자에게 연락해 주세요. &nbsp; ⓒ UFFICE. LTD ALL RIGHT RESERVED
         </div>
 
-        {import.meta.env.DEV && (
+        {API_MODE === 'demo' && (
           <div className="login-demo">
             테스트 계정 — 운영자: super / super1234 · 관리자: admin / admin1234 · 실장: manager / manager1234 · 기사: gong / gong1234
           </div>

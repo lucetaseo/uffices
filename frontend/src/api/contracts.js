@@ -3,7 +3,7 @@
 //   GET/POST/PATCH/DELETE /api/contracts ...
 // ============================================================
 
-import { ensureDb, saveDb, nextId } from './storage.js';
+import { loadDb, saveDb, nextId, publicBaseUrl, clientInfo } from './runtime.js';
 import { ApiError, authorize, clone, findContract, nowIso, visibleContracts } from './core.js';
 import { addHistory, assigneeOf, contractView } from './views.js';
 import { assertAssignable } from './schedule.js';
@@ -426,7 +426,7 @@ export const contracts = {
     c.updatedAt = nowIso();
     addHistory(c, user, '전자서명 요청');
     saveDb(db);
-    return { token, url: `${location.origin}${location.pathname}#/sign/${token}` };
+    return { token, url: `${publicBaseUrl()}#/sign/${token}` };
   },
 };
 
@@ -436,7 +436,7 @@ export const contracts = {
 
 export const esign = {
   async getByToken(token) {
-    const db = await ensureDb();
+    const db = await loadDb();
     const c = db.contracts.find((x) => x.esign?.token === token && !x.deletedAt);
     if (!c) throw new ApiError('유효하지 않거나 만료된 서명 링크입니다.', 'NOT_FOUND');
     const company = db.companies.find((x) => x.id === c.companyId);
@@ -449,7 +449,7 @@ export const esign = {
   },
 
   async sign(token, { signerName, signature, agreed }) {
-    const db = await ensureDb();
+    const db = await loadDb();
     const c = db.contracts.find((x) => x.esign?.token === token && !x.deletedAt);
     if (!c) throw new ApiError('유효하지 않거나 만료된 서명 링크입니다.', 'NOT_FOUND');
     if (c.esign.status === ESIGN_STATUS.SIGNED) throw new ApiError('이미 서명이 완료된 계약입니다.');
@@ -462,7 +462,7 @@ export const esign = {
       signerName: signerName.trim(),
       signature,
       signedAt: nowIso(),
-      userAgent: navigator.userAgent, // 서버에서는 IP 등 증빙정보도 함께 저장
+      ...(await clientInfo()), // 서명 증빙: 접속 기기(서버에서는 IP 포함)
     };
     c.updatedAt = nowIso();
     addHistory(c, { id: null, name: `고객(${signerName.trim()})`, role: 'CUSTOMER' }, '전자서명 완료');

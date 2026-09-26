@@ -1,48 +1,37 @@
 // ============================================================
-// 임시 저장소 (브라우저 localStorage)
+// 데이터 초기화 · 마이그레이션 · 샘플 데이터 (브라우저/서버 공용)
 //
-// 백엔드가 붙기 전까지 "서버 DB" 역할을 합니다. 테이블 구조는
-// 실제 DB 스키마로 그대로 옮길 수 있게 정규화해 두었습니다.
-//   companies / users / engineers / customers / contracts / notifications
-// 백엔드 연동 시 이 파일과 api/index.js 내부만 HTTP 호출로 교체하면 됩니다.
+// 테이블: companies / users / engineers / engineer_offs / teams / products /
+//         apartments / customers / contracts / notifications
+// 브라우저 데모 모드와 서버(PostgreSQL) 모두 같은 형태의 데이터를 사용합니다.
 // ============================================================
 
 import { ROLES, DATA_SCOPES, DEFAULT_MANAGER_PERMISSIONS } from '../auth/permissions.js';
 import { addDays, today } from '../utils/date.js';
 import { DEFAULT_SCHEDULE_SETTINGS } from '../constants.js';
 
-const DB_KEY = 'uffice.db.v1';
+export const SCHEMA_VERSION = 2;
 
-export async function hashPassword(password) {
-  const text = `uffice:${password}`;
-  if (globalThis.crypto?.subtle) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-    return Array.from(new Uint8Array(buf))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-  }
-  // http(비보안 컨텍스트) 접속 시 대체용. 실제 보안은 서버에서 bcrypt 등으로 처리해야 합니다.
-  let h = 0;
-  for (let i = 0; i < text.length; i++) h = (Math.imul(31, h) + text.charCodeAt(i)) | 0;
-  return `weak-${h}`;
-}
+// 데이터 테이블 목록 (서버 DB 테이블과 1:1)
+export const TABLES = [
+  'companies',
+  'users',
+  'engineers',
+  'engineerOffs',
+  'teams',
+  'products',
+  'apartments',
+  'customers',
+  'contracts',
+  'notifications',
+];
 
-let cache = null;
-
-export function loadDb() {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(DB_KEY);
-    if (raw) cache = JSON.parse(raw);
-  } catch {
-    cache = null;
-  }
-  return cache;
-}
-
-export function saveDb(db) {
-  cache = db;
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
+export function emptyDb() {
+  const db = { version: 1, seq: {} };
+  TABLES.forEach((t) => {
+    db[t] = [];
+  });
+  return db;
 }
 
 export function nextId(db, table) {
@@ -50,27 +39,9 @@ export function nextId(db, table) {
   return db.seq[table];
 }
 
-export async function ensureDb() {
-  const existing = loadDb();
-  if (existing) {
-    if (migrate(existing)) saveDb(existing);
-    // 비밀번호 해시 방식이 바뀐 환경(http↔https)에서 데모 계정 로그인이 막히지 않도록 재생성
-    if (existing.hashMode === hashMode()) return existing;
-  }
-  const db = await buildSeed();
-  saveDb(db);
-  return db;
-}
-
-export async function resetDb() {
-  cache = null;
-  localStorage.removeItem(DB_KEY);
-  return ensureDb();
-}
-
 // 이전 버전 데이터에 새 테이블/필드 추가 (백엔드에서는 DB 마이그레이션 파일이 이 역할)
 // 샘플 데이터도 생성 후 이 함수를 거쳐 최신 형태로 맞춥니다.
-function migrate(db) {
+export function migrate(db) {
   let changed = false;
   if (!db.teams) {
     db.teams = [];
@@ -180,7 +151,6 @@ export function seedMasterData(db, companyId) {
   });
 }
 
-const hashMode = () => (globalThis.crypto?.subtle ? 'sha256' : 'weak');
 
 // ------------------------------------------------------------
 // 샘플 데이터
@@ -214,21 +184,8 @@ const ITEMS = {
   기타: '',
 };
 
-async function buildSeed() {
-  const db = {
-    version: 1,
-    hashMode: hashMode(),
-    seq: {},
-    companies: [],
-    users: [],
-    engineers: [],
-    customers: [],
-    contracts: [],
-    notifications: [],
-    teams: [],
-    products: [],
-    apartments: [],
-  };
+export async function buildSeed(hashPassword) {
+  const db = emptyDb();
   const now = new Date().toISOString();
   const t = today();
 

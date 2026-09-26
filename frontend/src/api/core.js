@@ -3,11 +3,9 @@
 // (백엔드에서는 인증 미들웨어 + 권한 가드에 해당)
 // ============================================================
 
-import { ensureDb } from './storage.js';
+import { getSession, loadDb } from './runtime.js';
 import { ROLES, can, isOwnScopeOnly } from '../auth/permissions.js';
 import { today } from '../utils/date.js';
-
-export const SESSION_KEY = 'uffice.session';
 
 export class ApiError extends Error {
   constructor(message, code = 'BAD_REQUEST') {
@@ -65,13 +63,8 @@ export function engineerAsUser(e) {
 }
 
 export async function session() {
-  const db = await ensureDb();
-  let raw = null;
-  try {
-    raw = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-  } catch {
-    raw = null;
-  }
+  const db = await loadDb();
+  const raw = await getSession();
   let user = null;
   if (raw?.userId) user = db.users.find((u) => u.id === raw.userId);
   if (raw?.engineerId) {
