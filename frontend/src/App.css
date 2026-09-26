@@ -1864,3 +1864,16 @@ body {
 .contract-table td.nowrap-cell {
   white-space: nowrap;
 }
+
+.inactive-row td {
+  color: #aaa !important;
+}
+
+.demo-badge {
+  font-size: 11px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  padding: 2px 8px;
+  border-radius: 10px;
+}

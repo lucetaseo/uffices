@@ -3,8 +3,7 @@ import { auth } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { ROLE_LABELS } from '../auth/permissions.js';
 
-// 설정 메뉴는 이번 범위에서 제외 — 내 정보/비밀번호 변경만 제공.
-// 추후: 브랜드/구분/접수형태 코드관리, 시공기사 관리, 알림톡 템플릿, 계약 약관 관리
+// 설정 > 내 정보 (비밀번호 변경)
 export default function SettingsPage() {
   const { user, company, handleError, logout } = useAuth();
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
@@ -57,7 +56,7 @@ export default function SettingsPage() {
       </form>
 
       <p className="sub-text" style={{ marginTop: 30 }}>
-        브랜드·구분 코드, 시공기사, 알림톡 템플릿, 계약 약관 관리는 추후 이 메뉴에 추가됩니다.
+        브랜드·구분 코드, 알림톡 템플릿, 계약 약관 관리는 추후 설정 메뉴에 추가됩니다.
       </p>
 
       {import.meta.env.DEV && (

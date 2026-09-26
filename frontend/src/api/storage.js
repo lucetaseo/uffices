@@ -52,6 +52,7 @@ export function nextId(db, table) {
 export async function ensureDb() {
   const existing = loadDb();
   if (existing) {
+    if (migrate(existing)) saveDb(existing);
     // 비밀번호 해시 방식이 바뀐 환경(http↔https)에서 데모 계정 로그인이 막히지 않도록 재생성
     if (existing.hashMode === hashMode()) return existing;
   }
@@ -64,6 +65,65 @@ export async function resetDb() {
   cache = null;
   localStorage.removeItem(DB_KEY);
   return ensureDb();
+}
+
+// 이전 버전 데이터에 새 테이블/필드 추가 (백엔드에서는 DB 마이그레이션 파일이 이 역할)
+function migrate(db) {
+  let changed = false;
+  if (!db.teams) {
+    db.teams = [];
+    db.products = [];
+    db.apartments = [];
+    db.companies.forEach((c) => seedMasterData(db, c.id));
+    changed = true;
+  }
+  db.engineers.forEach((e) => {
+    if (e.loginId === undefined) {
+      Object.assign(e, { loginId: '', email: '', address: '', memo: '' });
+      changed = true;
+    }
+  });
+  db.users.forEach((u) => {
+    if (u.teamId === undefined) {
+      Object.assign(u, { teamId: null, position: '' });
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+// 업체 기초코드 샘플 (팀/상품/아파트)
+export function seedMasterData(db, companyId) {
+  const now = new Date().toISOString();
+  [
+    ['상담팀', '전화/온라인 상담 및 계약'],
+    ['박람회팀', '박람회 현장 계약'],
+    ['시공팀', '시공 일정 및 기사 관리'],
+  ].forEach(([name, description]) => {
+    db.teams.push({ id: nextId(db, 'teams'), companyId, name, description, createdAt: now });
+  });
+  [
+    ['메디알레6 줄눈 (욕실 1곳)', '패키지', '줄눈', '메디알레6 줄눈 : 욕실1곳 바닥(폴리) + 현관 sv(폴리) + 욕조벽 ㄷ자(폴리)', 450000],
+    ['힐스 등촌2 줄눈', '패키지', '줄눈', '욕실2곳 바닥(빅라이언)+현관(폴리) + 욕조벽ㄷ자(폴리) + 샤워벽 ㄷ자(폴리)', 890000],
+    ['탄성코트(고급형)', '패키지', '탄성', '시공범위 : 세탁실 + 베란다 + 실외기실(대피실)', 1100000],
+    ['욕실패키지 코팅(화장실2개소)', '패키지', '나노코팅', '샤워부스 유리 양면코팅(1) - 수납장 거울(2) - 세면대(2) - 양변기(2)', 600000],
+    ['샤워부스 안쪽 벽 3면 타일코팅[s.v]', '추가시공품목', '나노코팅', '샤워부스 안쪽 벽 3면 타일코팅[s.v]', 150000],
+    ['입주청소 기본', '패키지', '청소', '전체 입주청소 (외창 제외)', 440000],
+    ['현관 실리콘 오염방지', '무료시공', '줄눈', '(s.v)주방&욕실 실리콘 오염방지', 0],
+  ].forEach(([name, kind, category, detail, price]) => {
+    db.products.push({ id: nextId(db, 'products'), companyId, name, kind, category, detail, price, visible: true, createdAt: now });
+  });
+  [
+    ['서울특별시', '강서구', '힐스테이트 등촌역'],
+    ['서울특별시', '은평구', '힐스테이트 메디알레'],
+    ['서울특별시', '서초구', '디에이치 방배'],
+    ['서울특별시', '동작구', '힐스테이트 장승배기'],
+    ['경기도', '하남시', '미사 하우스디 더레이크'],
+    ['강원도', '강릉시', '강릉 오션시티 아이파크'],
+    ['서울특별시', '서초구', '래미안 원베일리'],
+  ].forEach(([sido, sigungu, name]) => {
+    db.apartments.push({ id: nextId(db, 'apartments'), companyId, sido, sigungu, name, createdAt: now });
+  });
 }
 
 const hashMode = () => (globalThis.crypto?.subtle ? 'sha256' : 'weak');
@@ -111,6 +171,9 @@ async function buildSeed() {
     customers: [],
     contracts: [],
     notifications: [],
+    teams: [],
+    products: [],
+    apartments: [],
   };
   const now = new Date().toISOString();
   const t = today();
@@ -169,7 +232,24 @@ async function buildSeed() {
     ['박태종', '010-2001-1007', '코팅'],
     ['김주하', '010-2001-1008', '탄성'],
   ].forEach(([name, phone, category]) => {
-    db.engineers.push({ id: nextId(db, 'engineers'), companyId: company.id, name, phone, category, active: true });
+    db.engineers.push({
+      id: nextId(db, 'engineers'),
+      companyId: company.id,
+      name,
+      phone,
+      category,
+      loginId: '',
+      email: '',
+      address: '',
+      memo: '',
+      active: true,
+    });
+  });
+  seedMasterData(db, company.id);
+  const counselTeam = db.teams.find((t) => t.companyId === company.id && t.name === '상담팀');
+  db.users.forEach((u) => {
+    u.teamId = u.role === ROLES.MANAGER ? counselTeam.id : null;
+    u.position = u.role === ROLES.ADMIN ? '대표' : u.role === ROLES.MANAGER ? '실장' : '';
   });
 
   const r = rng(20260927);

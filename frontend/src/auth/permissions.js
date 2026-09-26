@@ -39,6 +39,7 @@ export const PERMISSIONS = [
   { key: 'notify.send', group: '알림', label: '알림톡 발송' },
   { key: 'excel.export', group: '기타', label: '엑셀 다운로드' },
   { key: 'stats.view', group: '기타', label: '진행상황/통계 조회' },
+  { key: 'settings.manage', group: '설정', label: '기사/팀/상품/아파트 관리' },
 ];
 
 export const ALL_PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);

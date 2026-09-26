@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { contracts as contractApi, customers as customerApi } from '../api/index.js';
+import React, { useEffect, useState } from 'react';
+import { apartments as apartmentApi, contracts as contractApi, customers as customerApi, products as productApi } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import {
   BRANDS,
@@ -54,6 +54,25 @@ export default function ContractModal({ contract, engineers, onClose, onSaved })
   const [saving, setSaving] = useState(false);
   const [customerSearch, setCustomerSearch] = useState(null); // null=닫힘, 배열=검색결과
   const brands = company?.brands?.length ? company.brands : BRANDS;
+  const [productList, setProductList] = useState([]);
+  const [aptList, setAptList] = useState([]);
+
+  useEffect(() => {
+    productApi.list().then(setProductList).catch(() => {});
+    apartmentApi.list().then(setAptList).catch(() => {});
+  }, []);
+
+  // 상품선택: 시공내용에 상세품목을 이어 붙이고 금액을 시공총액에 더함
+  const addProduct = (id) => {
+    const p = productList.find((x) => x.id === Number(id));
+    if (!p) return;
+    setForm((prev) => ({
+      ...prev,
+      category: prev.items ? prev.category : p.category,
+      items: prev.items ? `${prev.items}\n${p.detail || p.name}` : p.detail || p.name,
+      totalAmount: showAmount ? (Number(prev.totalAmount) || 0) + (Number(p.price) || 0) : prev.totalAmount,
+    }));
+  };
 
   const set = (name, value) => setForm((prev) => ({ ...prev, [name]: value }));
   const handleChange = (e) => set(e.target.name, e.target.value);
@@ -213,7 +232,12 @@ export default function ContractModal({ contract, engineers, onClose, onSaved })
               <tr>
                 <td className="label-col">아파트 / 현장 <span className="star">*</span></td>
                 <td className="input-col inline-fields">
-                  <input type="text" name="aptName" value={form.aptName} onChange={handleChange} className="input-text addr-input" placeholder="아파트명 또는 현장명" required />
+                  <input type="text" name="aptName" value={form.aptName} onChange={handleChange} className="input-text addr-input" placeholder="아파트명 또는 현장명" list="apt-options" autoComplete="off" required />
+                  <datalist id="apt-options">
+                    {aptList.map((a) => (
+                      <option key={a.id} value={a.name}>{[a.sido, a.sigungu].filter(Boolean).join(' ')}</option>
+                    ))}
+                  </datalist>
                   <input type="text" name="dong" value={form.dong} onChange={handleChange} className="input-text" placeholder="동" style={{ width: 60 }} />
                   <input type="text" name="ho" value={form.ho} onChange={handleChange} className="input-text" placeholder="호" style={{ width: 60 }} />
                   <input type="text" name="aptType" value={form.aptType} onChange={handleChange} className="input-text" placeholder="타입(84A)" style={{ width: 90 }} />
@@ -223,6 +247,20 @@ export default function ContractModal({ contract, engineers, onClose, onSaved })
               <tr>
                 <td className="label-col">시공 내용</td>
                 <td className="input-col">
+                  {productList.length > 0 && (
+                    <div className="inline-fields" style={{ marginBottom: 6 }}>
+                      <select className="input-text" value="" onChange={(e) => addProduct(e.target.value)}>
+                        <option value="">+ 상품선택 (선택 시 시공내용{showAmount ? '·금액' : ''} 자동 입력)</option>
+                        {productList
+                          .filter((p) => p.category === form.category || !form.items)
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              [{p.category}/{p.kind}] {p.name}{showAmount ? ` — ${won(p.price)}원` : ''}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
                   <textarea name="items" value={form.items} onChange={handleChange} className="input-text full" rows={2} placeholder="예) 욕실2개(빅라이언) + 현관 / 주방&욕실 실리콘 오염방지" />
                 </td>
               </tr>
@@ -237,6 +275,9 @@ export default function ContractModal({ contract, engineers, onClose, onSaved })
                       <input type="time" value={s.time} onChange={(e) => setSchedule(i, 'time', e.target.value)} className="input-text" />
                       <select value={s.engineerId} onChange={(e) => setSchedule(i, 'engineerId', e.target.value)} className="input-text">
                         <option value="">기사 미배정</option>
+                        {s.engineerId && !engineers.some((en) => String(en.id) === String(s.engineerId)) && (
+                          <option value={s.engineerId}>{s.engineerName || '기사'}(미사용)</option>
+                        )}
                         {engineers.map((en) => (
                           <option key={en.id} value={en.id}>{en.name}({en.category})</option>
                         ))}

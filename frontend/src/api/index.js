@@ -231,6 +231,8 @@ async function buildUser(db, data) {
     companyId: data.companyId,
     permissions: data.role === ROLES.MANAGER ? data.permissions || [] : [],
     dataScope: data.dataScope || DATA_SCOPES.ALL,
+    teamId: data.teamId ? Number(data.teamId) : null,
+    position: data.position || '',
     active: true,
     createdBy: data.createdBy,
     createdAt: nowIso(),
@@ -296,6 +298,8 @@ export const users = {
     }
     if ('phone' in patch) target.phone = formatPhone(patch.phone);
     if ('active' in patch) target.active = !!patch.active;
+    if ('teamId' in patch) target.teamId = patch.teamId ? Number(patch.teamId) : null;
+    if ('position' in patch) target.position = patch.position || '';
     if (target.role === ROLES.MANAGER) {
       if ('permissions' in patch) target.permissions = sanitizePermissions(user, patch.permissions);
       if ('dataScope' in patch) target.dataScope = patch.dataScope === DATA_SCOPES.OWN ? DATA_SCOPES.OWN : DATA_SCOPES.ALL;
@@ -318,15 +322,117 @@ export const users = {
 };
 
 // ============================================================
-// 시공기사   GET /api/engineers
+// 기초코드 (설정 메뉴): 시공기사 / 팀 / 상품 / 아파트
+//   GET/POST/PATCH/DELETE /api/{engineers|teams|products|apartments}
+//   조회는 업체 내 모든 계정 가능(계약 등록 화면에서 사용), 변경은 settings.manage 권한
 // ============================================================
 
-export const engineers = {
-  async list() {
-    const { db, user } = await session();
-    return clone(db.engineers.filter((e) => e.companyId === user.companyId && e.active));
-  },
+function masterTable(table, { normalize, sort, beforeRemove }) {
+  return {
+    async list({ includeInactive = false } = {}) {
+      const { db, user } = await session();
+      return clone(
+        db[table]
+          .filter((r) => r.companyId === user.companyId)
+          .filter((r) => includeInactive || (r.active !== false && r.visible !== false))
+          .sort(sort || ((a, b) => b.id - a.id)),
+      );
+    },
+
+    async save(data) {
+      const { db, user } = await authorize('settings.manage');
+      const fields = normalize(data, db, user);
+      let row;
+      if (data.id) {
+        row = db[table].find((r) => r.id === data.id && r.companyId === user.companyId);
+        if (!row) throw new ApiError('항목을 찾을 수 없습니다.', 'NOT_FOUND');
+        Object.assign(row, fields, { updatedAt: nowIso() });
+      } else {
+        row = { id: nextId(db, table), companyId: user.companyId, createdAt: nowIso(), ...fields };
+        db[table].push(row);
+      }
+      saveDb(db);
+      return clone(row);
+    },
+
+    async remove(id) {
+      const { db, user } = await authorize('settings.manage');
+      const row = db[table].find((r) => r.id === id && r.companyId === user.companyId);
+      if (!row) return;
+      if (beforeRemove && beforeRemove(db, row) === false) {
+        saveDb(db);
+        return;
+      }
+      db[table] = db[table].filter((r) => r !== row);
+      saveDb(db);
+    },
+  };
+}
+
+const required = (v, msg) => {
+  if (!String(v ?? '').trim()) throw new ApiError(msg);
+  return String(v).trim();
 };
+
+export const engineers = masterTable('engineers', {
+  sort: (a, b) => a.name.localeCompare(b.name),
+  normalize: (d, db, user) => {
+    const loginId = (d.loginId || '').trim();
+    if (loginId && db.engineers.some((e) => e.companyId === user.companyId && e.loginId === loginId && e.id !== d.id)) {
+      throw new ApiError('이미 사용 중인 기사 아이디입니다.');
+    }
+    return {
+      name: required(d.name, '기사 이름을 입력해 주세요.'),
+      category: d.category || '기타',
+      phone: required(formatPhone(d.phone), '연락처를 입력해 주세요.'),
+      loginId, // 추후 '기사모바일' 로그인용
+      email: d.email || '',
+      address: d.address || '',
+      memo: d.memo || '',
+      active: d.active !== false,
+    };
+  },
+  // 계약에 배정된 적 있는 기사는 기록 보존을 위해 삭제 대신 비활성화
+  beforeRemove: (db, row) => {
+    const used = db.contracts.some((c) => c.schedules.some((s) => s.engineerId === row.id));
+    if (used) {
+      row.active = false;
+      return false;
+    }
+    return true;
+  },
+});
+
+export const teams = masterTable('teams', {
+  sort: (a, b) => a.name.localeCompare(b.name),
+  normalize: (d) => ({ name: required(d.name, '팀 이름을 입력해 주세요.'), description: d.description || '' }),
+  beforeRemove: (db, row) => {
+    db.users.forEach((u) => {
+      if (u.teamId === row.id) u.teamId = null;
+    });
+    return true;
+  },
+});
+
+export const products = masterTable('products', {
+  normalize: (d) => ({
+    name: required(d.name, '상품명을 입력해 주세요.'),
+    kind: d.kind || '패키지',
+    category: d.category || '기타',
+    detail: d.detail || '',
+    price: Math.max(0, Number(d.price) || 0),
+    visible: d.visible !== false,
+  }),
+});
+
+export const apartments = masterTable('apartments', {
+  sort: (a, b) => a.name.localeCompare(b.name),
+  normalize: (d) => ({
+    sido: d.sido || '',
+    sigungu: d.sigungu || '',
+    name: required(d.name, '아파트명을 입력해 주세요.'),
+  }),
+});
 
 // ============================================================
 // 계약자(고객)   GET/POST/PATCH/DELETE /api/customers

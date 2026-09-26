@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import './App.css';
 
 import { useAuth } from './auth/AuthContext.jsx';
-import { ROLES, ROLE_LABELS, canManageUsers } from './auth/permissions.js';
+import { ROLES, ROLE_LABELS } from './auth/permissions.js';
 import { formatKoreanDate, today } from './utils/date.js';
 
 import LoginPage from './pages/LoginPage.jsx';
@@ -14,6 +14,7 @@ import ProgressStatus from './components/ProgressStatus.jsx';
 import StatsPage from './pages/StatsPage.jsx';
 import AccountManagement from './pages/AccountManagement.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
+import { EngineerSettings, TeamSettings, ProductSettings, ApartmentSettings, ScheduleSettings } from './pages/settings/MasterSettings.jsx';
 
 // 메뉴 정의. 새 메뉴는 여기에 추가하고 필요한 권한(perm)만 지정하면 됩니다.
 const MENUS = [
@@ -31,9 +32,35 @@ const MENUS = [
   { key: 'schedule', label: '일정관리', icon: '📅', perm: 'schedule.view' },
   { key: 'progress', label: '진행상황', icon: '📑', perm: 'stats.view' },
   { key: 'stats', label: '통계정보', icon: '📊', perm: 'stats.view' },
-  { key: 'accounts', label: '계정관리', icon: '🔑', visible: canManageUsers },
-  { key: 'setting', label: '설정', icon: '⚙️', always: true },
+  // 운영자 전용 (업체 관리자는 설정 > 사용자관리 에서 실장을 관리)
+  { key: 'accounts', label: '업체/계정관리', icon: '🔑', visible: (u) => u.role === ROLES.SUPER },
+  {
+    key: 'setting',
+    label: '설정',
+    icon: '⚙️',
+    always: true,
+    subs: [
+      { key: 'users', label: '사용자관리', visible: (u) => u.role === ROLES.ADMIN },
+      { key: 'engineers', label: '기사관리', perm: 'settings.manage' },
+      { key: 'teams', label: '팀관리', perm: 'settings.manage' },
+      { key: 'products', label: '상품관리', perm: 'settings.manage' },
+      { key: 'apartments', label: '아파트관리', perm: 'settings.manage' },
+      { key: 'scheduleSetting', label: '일정관리설정', perm: 'settings.manage' },
+      { key: 'me', label: '내 정보' },
+    ],
+  },
 ];
+
+// 설정 하위 화면
+const SETTING_PAGES = {
+  users: AccountManagement,
+  engineers: EngineerSettings,
+  teams: TeamSettings,
+  products: ProductSettings,
+  apartments: ApartmentSettings,
+  scheduleSetting: ScheduleSettings,
+  me: SettingsPage,
+};
 
 function useHashRoute() {
   const [hash, setHash] = useState(window.location.hash);
@@ -61,12 +88,14 @@ export default function App() {
 function MainLayout() {
   const { user, company, logout, can } = useAuth();
 
+  const allowed = (item) => {
+    if (item.visible) return item.visible(user);
+    return !item.perm || can(item.perm);
+  };
   const menus = MENUS.filter((m) => {
     if (user.role === ROLES.SUPER) return m.key === 'accounts' || m.key === 'setting';
-    if (m.always) return true;
-    if (m.visible) return m.visible(user);
-    return can(m.perm);
-  });
+    return m.always || allowed(m);
+  }).map((m) => ({ ...m, subs: (m.subs || []).filter(allowed) }));
 
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('lastActiveTab') || 'contract');
   const [subTab, setSubTab] = useState('main');
@@ -77,9 +106,9 @@ function MainLayout() {
 
   const currentTab = menus.some((m) => m.key === activeTab) ? activeTab : menus[0]?.key;
 
-  const go = (tab, sub = 'main') => {
+  const go = (tab, sub) => {
     setActiveTab(tab);
-    setSubTab(sub);
+    setSubTab(sub || menus.find((m) => m.key === tab)?.subs[0]?.key || 'main');
     setOpenDropdown(null);
     localStorage.setItem('lastActiveTab', tab);
   };
@@ -98,7 +127,7 @@ function MainLayout() {
         </div>
         <nav className="main-nav-bar">
           {menus.map((m) => {
-            const subs = (m.subs || []).filter((s) => !s.perm || can(s.perm));
+            const { subs } = m;
             return (
               <div
                 key={m.key}
@@ -145,6 +174,9 @@ function MainLayout() {
           )}
         </div>
         <div className="welcome">
+          <span className="demo-badge" title="백엔드 연결 전: 입력한 데이터는 이 브라우저에만 저장됩니다">
+            데모 모드 · 브라우저 저장
+          </span>
           <span className="welcome-date">{formatKoreanDate(today())}</span>
           <span>
             {user.name}({ROLE_LABELS[user.role]})님 환영합니다.
@@ -173,8 +205,14 @@ function MainLayout() {
         {currentTab === 'progress' && <ProgressStatus />}
         {currentTab === 'stats' && <StatsPage />}
         {currentTab === 'accounts' && <AccountManagement />}
-        {currentTab === 'setting' && <SettingsPage />}
+        {currentTab === 'setting' && <SettingPage subTab={subTab} subs={menus.find((m) => m.key === 'setting').subs} />}
       </main>
     </div>
   );
+}
+
+function SettingPage({ subTab, subs }) {
+  const key = subs.some((s) => s.key === subTab) ? subTab : subs[0].key;
+  const Page = SETTING_PAGES[key];
+  return <Page />;
 }

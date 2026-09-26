@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { companies as companyApi, users as userApi } from '../api/index.js';
+import { companies as companyApi, teams as teamApi, users as userApi } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import {
   DATA_SCOPES,
@@ -274,12 +274,18 @@ function ManagerAccountsView() {
   const { user, handleError } = useAuth();
   const [list, setList] = useState([]);
   const [form, setForm] = useState(null);
+  const [teamList, setTeamList] = useState([]);
+  const [query, setQuery] = useState('');
   const grantable = permissionsOf(user);
 
   const load = useCallback(() => userApi.list().then(setList).catch(handleError), [handleError]);
   useEffect(() => {
     load();
+    teamApi.list().then(setTeamList).catch(() => {});
   }, [load]);
+
+  const teamName = (id) => teamList.find((t) => t.id === id)?.name || '';
+  const shown = list.filter((m) => !query || m.name.includes(query) || m.loginId.includes(query));
 
   const openNew = () =>
     setForm({
@@ -290,6 +296,8 @@ function ManagerAccountsView() {
       phone: '',
       permissions: DEFAULT_MANAGER_PERMISSIONS,
       dataScope: DATA_SCOPES.ALL,
+      teamId: '',
+      position: '실장',
     });
 
   const togglePerm = (key) =>
@@ -307,6 +315,8 @@ function ManagerAccountsView() {
           phone: form.phone,
           permissions: form.permissions,
           dataScope: form.dataScope,
+          teamId: form.teamId,
+          position: form.position,
           password: form.password || undefined,
         });
       } else {
@@ -334,15 +344,20 @@ function ManagerAccountsView() {
   return (
     <div className="page-card">
       <div className="page-header">
-        <h2>실장 계정 / 권한 관리</h2>
+        <h2>사용자관리</h2>
         <ul className="notice-list">
+          <li>유피스 PC 및 박람회 태블릿에서 전자계약 시스템을 사용할 직원 계정을 등록/관리합니다.</li>
           <li>실장 계정을 만들고 메뉴별 권한을 체크해 위임합니다. 체크하지 않은 메뉴는 실장 화면에 보이지 않습니다.</li>
           <li>데이터 범위를 “본인 작성 건만”으로 설정하면 실장은 자기가 등록한 계약만 조회/수정할 수 있습니다.</li>
         </ul>
       </div>
       <div className="customer-action-bar">
+        <div className="search-box">
+          <input className="customer-search-input" placeholder="이름/아이디" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <button type="button" className="btn-search-icon">🔍</button>
+        </div>
         <button type="button" className="btn-add-customer" onClick={openNew}>
-          + 실장 계정 등록
+          + 사용자 등록
         </button>
       </div>
 
@@ -352,6 +367,7 @@ function ManagerAccountsView() {
             <tr>
               <th>아이디</th>
               <th>이름</th>
+              <th>부서/직책</th>
               <th>연락처</th>
               <th>데이터 범위</th>
               <th>권한</th>
@@ -363,13 +379,14 @@ function ManagerAccountsView() {
           <tbody>
             {list.length === 0 && (
               <tr>
-                <td colSpan={8} className="no-data">등록된 실장 계정이 없습니다.</td>
+                <td colSpan={9} className="no-data">등록된 사용자가 없습니다.</td>
               </tr>
             )}
-            {list.map((m) => (
+            {shown.map((m) => (
               <tr key={m.id}>
                 <td>{m.loginId}</td>
                 <td className="bold-text">{m.name}</td>
+                <td>{[teamName(m.teamId), m.position].filter(Boolean).join(' / ') || '-'}</td>
                 <td>{m.phone || '-'}</td>
                 <td>{m.dataScope === DATA_SCOPES.OWN ? '본인 작성 건만' : '업체 전체'}</td>
                 <td className="text-left perm-summary">
@@ -396,7 +413,7 @@ function ManagerAccountsView() {
       </div>
 
       {form && (
-        <FormModal title={form.id ? `실장 권한 수정 — ${form.name}` : '실장 계정 등록'} onClose={() => setForm(null)} onSubmit={save}>
+        <FormModal title={form.id ? `사용자 수정 — ${form.name}` : '사용자 등록'} onClose={() => setForm(null)} onSubmit={save}>
           <Row label="아이디 *">
             {form.id ? form.loginId : <input className="input-text" value={form.loginId} onChange={(e) => setForm({ ...form, loginId: e.target.value })} required />}
           </Row>
@@ -414,6 +431,13 @@ function ManagerAccountsView() {
           <Row label="이름 / 연락처 *">
             <input className="input-text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             <input className="input-text" placeholder="010-0000-0000" value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })} />
+          </Row>
+          <Row label="부서 / 직책">
+            <select className="input-text" value={form.teamId || ''} onChange={(e) => setForm({ ...form, teamId: e.target.value })}>
+              <option value="">팀 없음</option>
+              {teamList.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            <input className="input-text" placeholder="직책 (예: 실장, 팀장)" value={form.position || ''} onChange={(e) => setForm({ ...form, position: e.target.value })} />
           </Row>
           <Row label="데이터 범위">
             <label className="radio-item">
