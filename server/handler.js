@@ -85,6 +85,7 @@ const READ_ONLY = new Set([
   'customers.findByPhone',
   'contracts.list',
   'contracts.get',
+  'contracts.group',
   'esign.getByToken',
   'notifications.history',
   'reports.contracts',

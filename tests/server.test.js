@@ -201,3 +201,55 @@ test('로그인 5회 실패 시 잠금, 로그아웃 후 차단', async () => {
   await admin.ok('auth', 'logout');
   assert.equal((await admin('contracts', 'list', {})).status, 401);
 });
+
+test('계약번호: 계약일 순서로 부여, 예전 날짜 계약은 그 위치에 들어감, 목록은 번호순', async () => {
+  await admin.ok('auth', 'login', 'admin', 'admin1234'); // 앞 시험에서 로그아웃했으므로 다시 로그인
+  const before = await admin.ok('contracts', 'list', {});
+  const total = before.length;
+  assert.equal(before[0].no, total, '최신 계약 번호 = 전체 건수');
+  assert.ok(before.every((c, i) => i === 0 || before[i - 1].no > c.no), '번호 내림차순 정렬');
+
+  const oldest = await admin.ok('contracts', 'create', { ...base, customerName: '오래된계약', contractDate: '2000-01-01' });
+  assert.equal(oldest.no, 1, '가장 오래된 계약일 → 1번');
+  const after = await admin.ok('contracts', 'list', {});
+  assert.equal(after[0].no, total + 1);
+  assert.equal(new Set(after.map((c) => c.no)).size, after.length, '번호 중복 없음');
+
+  await admin.ok('contracts', 'moveToTrash', [oldest.id]);
+  const trash = await admin.ok('contracts', 'list', { trash: true });
+  assert.equal(trash.find((c) => c.id === oldest.id).no, null, '휴지통 계약은 번호 없음');
+  assert.equal((await admin.ok('contracts', 'list', {}))[0].no, total);
+});
+
+test('계약 상세: 같은 계약자·현장 시공 묶음, 입금/환불/수정/삭제, 상담내역', async () => {
+  const site = { ...base, customerName: '묶음고객', customerPhone: '010-7070-8080', aptName: '묶음아파트', dong: '101', ho: '202', totalAmount: 500000 };
+  const a = await admin.ok('contracts', 'create', { ...site, category: '줄눈' });
+  const b = await admin.ok('contracts', 'create', { ...site, category: '청소', totalAmount: 300000 });
+  await admin.ok('contracts', 'create', { ...site, ho: '999', category: '탄성' }); // 다른 호수 → 다른 묶음
+
+  const g = await admin.ok('contracts', 'group', a.id);
+  assert.deepEqual(g.contracts.map((c) => c.id).sort(), [a.id, b.id].sort());
+  assert.equal(g.otherContracts.length, 1, '같은 계약자의 다른 현장');
+
+  let c = await admin.ok('contracts', 'addPayment', a.id, { kind: '계약금', method: '카드', amount: 100000, cardLast4: '1234-5678-9012-3456' });
+  assert.equal(c.payments[0].cardLast4, '3456', '카드번호는 끝 4자리만 저장');
+  c = await admin.ok('contracts', 'addPayment', a.id, { kind: '환불', method: '계좌이체', amount: 20000 });
+  const { calcAmounts } = await import('../frontend/src/utils/contract.js');
+  let amt = calcAmounts(c);
+  assert.equal(amt.paid, 100000);
+  assert.equal(amt.refund, 20000);
+  assert.equal(amt.balance, 500000 - (100000 - 20000));
+
+  c = await admin.ok('contracts', 'updatePayment', a.id, c.payments[0].id, { ...c.payments[0], amount: 150000 });
+  assert.equal(calcAmounts(c).paid, 150000);
+  c = await admin.ok('contracts', 'removePayment', a.id, c.payments[1].id);
+  assert.equal(calcAmounts(c).refund, 0);
+  assert.ok(c.history.some((h) => h.action === '입금 수정'));
+
+  assert.equal((await manager('contracts', 'addPayment', a.id, { amount: 1000 })).status, 403, '수정 권한 없는 실장은 입금 등록 불가');
+
+  await admin.ok('contracts', 'addNote', b.id, '고객 통화: 오전 선호');
+  const g2 = await admin.ok('contracts', 'group', a.id);
+  assert.equal(g2.notes[0].text, '고객 통화: 오전 선호');
+  assert.equal(g2.notes[0].category, '청소');
+});

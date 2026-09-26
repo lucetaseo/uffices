@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../auth/AuthContext.jsx';
 import { ROLES } from '../auth/permissions.js';
 import {
+  ISSUE_STATUS,
   APPROVAL_STATUS,
   ASSIGN_TYPES,
   BRANDS,
@@ -71,6 +72,9 @@ function initialForm(contract, company, user) {
     contractDate: today(),
     moveInDate: '',
     approval: '승인',
+    taxInvoice: '',
+    cashReceipt: '',
+    engineerNote: '',
     memo: '',
     category: CATEGORIES[0],
     workType: WORK_TYPES[0],
@@ -91,7 +95,7 @@ function initialForm(contract, company, user) {
 }
 
 // 계약서 작성/수정 화면. contractId 가 없으면 신규.
-export default function ContractEditor({ contractId, engineers, onClose }) {
+export default function ContractEditor({ contractId, prefill, engineers, onClose }) {
   const { user, company, can, handleError } = useAuth();
   const isEdit = !!contractId;
   const showAmount = can('contract.amount');
@@ -100,7 +104,7 @@ export default function ContractEditor({ contractId, engineers, onClose }) {
   const brands = company?.brands?.length ? company.brands : BRANDS;
 
   const [contract, setContract] = useState(null);
-  const [form, setForm] = useState(() => (isEdit ? null : initialForm(null, company, user)));
+  const [form, setForm] = useState(() => (isEdit ? null : { ...initialForm(null, company, user), ...(prefill || {}) }));
   const [saving, setSaving] = useState(false);
   const [productList, setProductList] = useState([]);
   const [aptList, setAptList] = useState([]);
@@ -346,6 +350,23 @@ export default function ContractEditor({ contractId, engineers, onClose }) {
               </td>
             </tr>
             <tr>
+              <td className="label-col">세금계산서 / 현금영수증</td>
+              <td className="input-col inline-fields">
+                <label className="inline-label">
+                  세금계산서
+                  <select className="input-text" value={form.taxInvoice || ''} onChange={(e) => set('taxInvoice', e.target.value)}>
+                    {ISSUE_STATUS.map((v) => <option key={v} value={v}>{v || '선택'}</option>)}
+                  </select>
+                </label>
+                <label className="inline-label">
+                  현금영수증
+                  <select className="input-text" value={form.cashReceipt || ''} onChange={(e) => set('cashReceipt', e.target.value)}>
+                    {ISSUE_STATUS.map((v) => <option key={v} value={v}>{v || '선택'}</option>)}
+                  </select>
+                </label>
+              </td>
+            </tr>
+            <tr>
               <td className="label-col">기타사항</td>
               <td className="input-col">
                 <textarea className="input-text full" rows={3} name="memo" value={form.memo} onChange={onField} placeholder="내용입력 (내부용, 고객에게 표시되지 않음)" />
@@ -484,6 +505,12 @@ export default function ContractEditor({ contractId, engineers, onClose }) {
               );
             })}
 
+            <tr>
+              <td className="label-col">기사전달사항</td>
+              <td className="input-col" colSpan={5}>
+                <textarea className="input-text full" rows={2} name="engineerNote" value={form.engineerNote || ''} onChange={onField} placeholder="기사모바일에 표시됩니다 (예: 현관 비밀번호, 주차 안내, 고객 요청사항)" />
+              </td>
+            </tr>
             <tr>
               <td className="label-col">시공상태(최종)</td>
               <td className="input-col" colSpan={5}>

@@ -98,6 +98,7 @@ function MySchedules() {
                 </div>
                 {s.items && <div className="sub-text pre-wrap">{s.items}</div>}
                 {s.memo && <div className="sub-text">메모: {s.memo}</div>}
+                {s.engineerNote && <div className="engineer-note">📌 전달사항: {s.engineerNote}</div>}
                 <div className="engineer-balance">현장 수령 잔액 <strong>{won(s.balance)}원</strong></div>
 
                 <div className="engineer-report">

@@ -27,9 +27,9 @@ const TEMPLATES = {
   },
 };
 
-export default function KakaoModal({ contract, initialTemplate = '기사배정', initialTarget = '고객', initialStep = 0, signUrl, onClose }) {
+export default function KakaoModal({ contract, initialTemplate = '기사배정', initialTarget = '고객', initialStep = 0, initialBrand, signUrl, onClose }) {
   const { handleError } = useAuth();
-  const [brand, setBrand] = useState(contract.brand || BRANDS[0]);
+  const [brand, setBrand] = useState(initialBrand || contract.brand || BRANDS[0]);
   const [template, setTemplate] = useState(initialTemplate);
   const [target, setTarget] = useState(initialTarget);
   const [step, setStep] = useState(initialStep);

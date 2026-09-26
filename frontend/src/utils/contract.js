@@ -1,19 +1,32 @@
 // 계약 금액 계산. 저장하지 않고 항상 원본값에서 계산해 불일치를 막습니다.
-//   실계약금 = 시공총액 - 할인 - 상품권
-//   잔액     = 실계약금 - 입금합계
+//   실계약금   = 시공총액 - 할인 - 상품권
+//   매출취소   = 취소된 계약의 실계약금 (취소 건은 받을 돈이 없음)
+//   입금       = 입금 내역 합계 (환불 제외)
+//   환불       = 입금 내역 중 '환불' 합계
+//   남은금액   = (실계약금 - 매출취소) - (입금 - 환불)
+
+export const isRefund = (p) => p.kind === '환불';
 
 export function calcAmounts(c) {
   const total = Number(c.totalAmount) || 0;
   const discount = Number(c.discount) || 0;
   const voucher = Number(c.voucher) || 0;
   const actual = total - discount - voucher;
+  const canceled = c.status === '취소' ? actual : 0;
   const payments = c.payments || [];
-  const paid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  let paid = 0;
+  let refund = 0;
   const paidBy = {};
   payments.forEach((p) => {
-    paidBy[p.method] = (paidBy[p.method] || 0) + (Number(p.amount) || 0);
+    const amount = Number(p.amount) || 0;
+    if (isRefund(p)) {
+      refund += amount;
+      return;
+    }
+    paid += amount;
+    paidBy[p.method] = (paidBy[p.method] || 0) + amount;
   });
-  return { total, discount, voucher, actual, paid, paidBy, balance: actual - paid };
+  return { total, discount, voucher, actual, canceled, paid, refund, paidBy, balance: actual - canceled - (paid - refund) };
 }
 
 export function summarize(contracts) {
@@ -29,10 +42,12 @@ export function summarize(contracts) {
     paidBy: {},
     balance: 0,
     canceledAmount: 0,
+    refund: 0,
   };
   contracts.forEach((c) => {
     const a = calcAmounts(c);
     if (c.status === '시공완료') sum.completed += 1;
+    sum.refund += a.refund;
     if (c.status === '취소') {
       sum.canceled += 1;
       sum.canceledAmount += a.actual;

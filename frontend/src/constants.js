@@ -40,7 +40,13 @@ export const DEFAULT_SCHEDULE_SETTINGS = {
 };
 
 // 입금 구분
-export const PAYMENT_KINDS = ['계약금', '중도금', '잔금', '추가금'];
+export const PAYMENT_KINDS = ['계약금', '중도금', '잔금', '추가금', '환불'];
+
+// 영수증 발행 구분
+export const RECEIPT_TYPES = ['미발행', '현금영수증', '세금계산서', '카드전표'];
+
+// 계약 단위 세금계산서 / 현금영수증 발행 상태
+export const ISSUE_STATUS = ['', '발행요청', '발행완료', '해당없음'];
 
 // 전자계약(서명) 상태
 export const ESIGN_STATUS = {
@@ -62,10 +68,9 @@ export const DATE_TYPES = [
 ];
 
 export const SORT_OPTIONS = [
-  { value: 'contractDate_desc', label: '계약일순(최신)' },
-  { value: 'contractDate_asc', label: '계약일순(과거)' },
+  { value: 'no_desc', label: '번호순(최신)' },
+  { value: 'no_asc', label: '번호순(과거)' },
   { value: 'scheduleDate_asc', label: '시공예정일순' },
-  { value: 'no_desc', label: '번호순' },
 ];
 
 export const MAX_SCHEDULE_STEPS = 3;

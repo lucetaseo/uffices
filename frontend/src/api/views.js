@@ -2,6 +2,7 @@
 
 import { can } from '../auth/permissions.js';
 import { clone, nowIso } from './core.js';
+import { numberOf } from './numbering.js';
 
 export function assigneeOf(db, s) {
   const engineer = s.engineerId ? db.engineers.find((e) => e.id === s.engineerId) : null;
@@ -18,6 +19,7 @@ export function assigneeOf(db, s) {
 // 금액 권한이 없는 사용자에게는 금액 필드를 내려주지 않음
 export function contractView(c, user, db) {
   const out = clone(c);
+  out.no = numberOf(db, c); // 계약일 순서 번호 (휴지통은 null)
   out.ownerName = db.users.find((u) => u.id === c.ownerId)?.name || '';
   out.schedules = out.schedules.map((s) => ({ ...s, ...assigneeOf(db, s) }));
   if (out.esign) delete out.esign.signature; // 서명 이미지는 상세조회에서만

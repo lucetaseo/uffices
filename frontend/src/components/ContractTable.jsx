@@ -22,7 +22,8 @@ const ESIGN_CLASS = {
   [ESIGN_STATUS.SIGNED]: 'es-done',
 };
 
-export default function ContractTable({ contracts, selectedIds, onToggle, onToggleAll, showAmount, renderActions }) {
+// onOpen 이 있으면 줄에 마우스를 올렸을 때 강조되고, 누르면 계약 상세로 이동
+export default function ContractTable({ contracts, selectedIds, onToggle, onToggleAll, showAmount, renderActions, onOpen }) {
   const allChecked = contracts.length > 0 && contracts.every((c) => selectedIds.has(c.id));
   const colCount = showAmount ? 16 : 11;
 
@@ -66,11 +67,16 @@ export default function ContractTable({ contracts, selectedIds, onToggle, onTogg
           {contracts.map((item) => {
             const a = showAmount ? calcAmounts(item) : null;
             return (
-              <tr key={item.id}>
-                <td data-label="선택">
+              <tr
+                key={item.id}
+                className={onOpen ? 'clickable-row' : ''}
+                onClick={onOpen ? () => onOpen(item) : undefined}
+                title={onOpen ? '누르면 계약 상세로 이동합니다' : undefined}
+              >
+                <td data-label="선택" onClick={(e) => e.stopPropagation()}>
                   <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => onToggle(item.id)} />
                 </td>
-                <td data-label="번호" className="nowrap-cell">{item.no}</td>
+                <td data-label="번호" className="nowrap-cell">{item.no ?? '-'}</td>
                 <td data-label="브랜드" className="nowrap-cell">{item.brand}</td>
                 <td data-label="구분" className="nowrap-cell">
                   {item.category}
@@ -123,7 +129,7 @@ export default function ContractTable({ contracts, selectedIds, onToggle, onTogg
                     <td data-label="잔액" className={`text-right ${a.balance > 0 ? 'text-red' : ''}`}>{won(a.balance)}</td>
                   </>
                 )}
-                <td data-label="관리" className="action-cell">
+                <td data-label="관리" className="action-cell" onClick={(e) => e.stopPropagation()}>
                   {renderActions(item)}
                 </td>
               </tr>
