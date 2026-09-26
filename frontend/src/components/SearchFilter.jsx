@@ -1,127 +1,151 @@
 import React, { useState } from 'react';
+import {
+  BRANDS,
+  CATEGORIES,
+  DATE_TYPES,
+  ESIGN_STATUS,
+  RECEPTION_TYPES,
+  SORT_OPTIONS,
+  WORK_STATUS,
+} from '../constants.js';
+import { presetRange } from '../utils/date.js';
 
-export default function SearchFilter({ onSearch, onAddContract, onExportExcel }) {
-  const [dateType, setDateType] = useState('시공예정일');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+export const EMPTY_FILTER = {
+  dateType: 'contractDate',
+  startDate: '',
+  endDate: '',
+  aptName: '',
+  dong: '',
+  ho: '',
+  customerName: '',
+  phone: '',
+  brand: '',
+  category: '',
+  receptionType: '',
+  status: '',
+  esignStatus: '',
+  ownerId: '',
+  engineerId: '',
+  sort: 'contractDate_desc',
+};
 
-  const [aptName, setAptName] = useState('');
-  const [dong, setDong] = useState('');
-  const [ho, setHo] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [phone, setPhone] = useState('');
+const PRESETS = [
+  { key: 'today', label: '오늘' },
+  { key: 'week', label: '이번주' },
+  { key: 'month', label: '이번달' },
+  { key: 'lastMonth', label: '지난달' },
+  { key: '3months', label: '3개월' },
+];
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    onSearch({
-      dateType,
-      startDate,
-      endDate,
-      aptName,
-      dong,
-      ho,
-      customerName,
-      phone
-    });
+// 텍스트/날짜 입력은 [검색] 시 반영, 드롭다운은 선택 즉시 반영
+export default function SearchFilter({ filter, onSearch, staff = [], engineers = [], actions }) {
+  const [draft, setDraft] = useState(filter);
+
+  const set = (name, value) => setDraft((prev) => ({ ...prev, [name]: value }));
+
+  const applySelect = (name, value) => {
+    const next = { ...draft, [name]: value };
+    setDraft(next);
+    onSearch(next);
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (draft.startDate && draft.endDate && draft.startDate > draft.endDate) {
+      alert('시작일이 종료일보다 늦습니다.');
+      return;
+    }
+    onSearch(draft);
+  };
+
+  const handlePreset = (key) => {
+    const [startDate, endDate] = presetRange(key);
+    const next = { ...draft, startDate, endDate };
+    setDraft(next);
+    onSearch(next);
+  };
+
+  const handleReset = () => {
+    setDraft(EMPTY_FILTER);
+    onSearch(EMPTY_FILTER);
+  };
+
+  const input = (name, placeholder, className = 'input-search') => (
+    <input
+      type="text"
+      placeholder={placeholder}
+      value={draft[name]}
+      onChange={(e) => set(name, e.target.value)}
+      className={className}
+    />
+  );
+
+  const select = (name, placeholder, options) => (
+    <select value={draft[name]} onChange={(e) => applySelect(name, e.target.value)} className="input-select">
+      {placeholder && <option value="">{placeholder}</option>}
+      {options.map((o) =>
+        typeof o === 'string' ? (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ) : (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ),
+      )}
+    </select>
+  );
+
   return (
-    <div className="search-filter-container">
-      {/* 상단 퀵 버튼 그룹 */}
-      <div className="quick-btn-group">
-        <button type="button" className="btn-quick">계약자 등록</button>
-        <button type="button" className="btn-quick">계약서 등록하기</button>
-        <button type="button" className="btn-quick">지도검색</button>
-        <button type="button" className="btn-quick">계산기</button>
-        {/* 모달 열기 함수 연결 */}
-        <button type="button" className="btn-quick primary" onClick={onAddContract}>
-          + 빠른계약등록
-        </button>
-      </div>
-
-      {/* 검색 필터 박스 */}
-      <div className="filter-box">
-        <form onSubmit={handleSearchSubmit}>
-          <div className="filter-row">
-            <select 
-              value={dateType} 
-              onChange={(e) => setDateType(e.target.value)}
-              className="input-select"
-            >
-              <option value="시공예정일">시공예정일</option>
-              <option value="시공완료">시공완료일</option>
-              <option value="취소일">취소일</option>
-            </select>
-
-            <input 
-              type="date" 
-              value={startDate} 
-              onChange={(e) => setStartDate(e.target.value)}
-              className="input-date"
-            />
-            <span>~</span>
-            <input 
-              type="date" 
-              value={endDate} 
-              onChange={(e) => setEndDate(e.target.value)}
-              className="input-date"
-            />
-          </div>
-
-          <div className="filter-row">
-            <input 
-              type="text" 
-              placeholder="아파트명" 
-              value={aptName} 
-              onChange={(e) => setAptName(e.target.value)}
-              className="input-search"
-            />
-            <input 
-              type="text" 
-              placeholder="동" 
-              value={dong} 
-              onChange={(e) => setDong(e.target.value)}
-              className="input-search"
-              style={{ width: '60px' }}
-            />
-            <input 
-              type="text" 
-              placeholder="호" 
-              value={ho} 
-              onChange={(e) => setHo(e.target.value)}
-              className="input-search"
-              style={{ width: '60px' }}
-            />
-            <input 
-              type="text" 
-              placeholder="계약자명" 
-              value={customerName} 
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="input-search"
-            />
-            <input 
-              type="text" 
-              placeholder="계약자 전화번호" 
-              value={phone} 
-              onChange={(e) => setPhone(e.target.value)}
-              className="input-search"
-              style={{ width: '150px' }}
-            />
-            <button type="submit" className="btn-search-submit">
-              검색
-            </button>
-
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
-              <button type="button" className="btn-quick" onClick={onAddContract}>
-                + 계약등록
+    <div className="filter-box">
+      <form onSubmit={handleSubmit}>
+        <div className="filter-row">
+          <select value={draft.dateType} onChange={(e) => set('dateType', e.target.value)} className="input-select">
+            {DATE_TYPES.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+          <input type="date" value={draft.startDate} onChange={(e) => set('startDate', e.target.value)} className="input-date" />
+          <span>~</span>
+          <input type="date" value={draft.endDate} onChange={(e) => set('endDate', e.target.value)} className="input-date" />
+          <div className="preset-group">
+            {PRESETS.map((p) => (
+              <button key={p.key} type="button" className="btn-preset" onClick={() => handlePreset(p.key)}>
+                {p.label}
               </button>
-              <button type="button" className="btn-quick" onClick={onExportExcel}>
-                📄 엑셀다운로드
-              </button>
-            </div>
+            ))}
           </div>
-        </form>
-      </div>
+        </div>
+
+        <div className="filter-row">
+          {input('aptName', '아파트명', 'input-search wide')}
+          {input('dong', '동', 'input-search narrow')}
+          {input('ho', '호', 'input-search narrow')}
+          {input('customerName', '계약자명')}
+          {input('phone', '계약자 전화번호', 'input-search wide')}
+          <button type="submit" className="btn-search-submit">
+            🔍 검색
+          </button>
+          <button type="button" className="btn-reset" onClick={handleReset}>
+            초기화
+          </button>
+        </div>
+
+        <div className="filter-row">
+          {select('brand', '브랜드선택', BRANDS)}
+          {select('category', '구분', CATEGORIES)}
+          {select('sort', null, SORT_OPTIONS)}
+          {select('receptionType', '접수형태', RECEPTION_TYPES)}
+          {select('status', '시공상태', WORK_STATUS)}
+          {select('esignStatus', '전자계약상태', Object.values(ESIGN_STATUS))}
+          {staff.length > 0 && select('ownerId', '작성자선택', staff.map((s) => ({ value: String(s.id), label: s.name })))}
+          {select('engineerId', '시공담당(기사)', engineers.map((e) => ({ value: String(e.id), label: `${e.name}(${e.category})` })))}
+          <div className="filter-actions">{actions}</div>
+        </div>
+      </form>
     </div>
   );
 }
