@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { OFF_PERIODS } from '../constants.js';
 import { formatKoreanDate } from '../utils/date.js';
+import { backdrop } from '../utils/backdrop.js';
 
 // 기사 휴무 등록/취소 팝업 (직원용 일정관리 + 기사모바일 공용)
 //  engineers 가 주어지면 기사 선택 가능 (직원용), 없으면 본인 휴무 (기사용)
@@ -28,7 +29,7 @@ export default function OffModal({ date, engineers, initialEngineerId = '', exis
   };
 
   return (
-    <div className="modal-overlay" onMouseDown={onClose}>
+    <div className="modal-overlay" {...backdrop(onClose)}>
       <div className="modal-content talk-modal off-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="off-modal-head">
           <h3>{formatKoreanDate(date)}</h3>

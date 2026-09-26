@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PAYMENT_KINDS, PAYMENT_METHODS, RECEIPT_TYPES } from '../constants.js';
 import { today } from '../utils/date.js';
+import { backdrop } from '../utils/backdrop.js';
 
 // 입금 등록/수정 창 (계약 상세 > 입금등록)
 export default function PaymentModal({ contract, payment, onSave, onClose }) {
@@ -36,7 +37,7 @@ export default function PaymentModal({ contract, payment, onSave, onClose }) {
   const isCard = form.method === '카드';
 
   return (
-    <div className="modal-overlay" onMouseDown={onClose}>
+    <div className="modal-overlay" {...backdrop(onClose)}>
       <div className="customer-reg-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-top-bar">
           <h3>

@@ -3,6 +3,7 @@ import { notifications } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { BRANDS } from '../constants.js';
 import { formatAddress } from '../utils/format.js';
+import { backdrop } from '../utils/backdrop.js';
 
 // 템플릿 정의. 비즈고에 승인된 템플릿이 늘어나면 여기에 추가합니다.
 const TEMPLATES = {
@@ -72,7 +73,7 @@ export default function KakaoModal({ contract, initialTemplate = '기사배정',
   );
 
   return (
-    <div className="modal-overlay" onMouseDown={onClose}>
+    <div className="modal-overlay" {...backdrop(onClose)}>
       <div className="modal-content talk-modal" onMouseDown={(e) => e.stopPropagation()}>
         <h3>카카오 알림톡 발송</h3>
         <div className="talk-select-section">

@@ -10,6 +10,7 @@ import {
 } from '../auth/permissions.js';
 import { addDays, today } from '../utils/date.js';
 import { formatPhone } from '../utils/format.js';
+import { backdrop } from '../utils/backdrop.js';
 
 export default function AccountManagement() {
   const { user } = useAuth();
@@ -477,7 +478,7 @@ function ManagerAccountsView() {
 
 function FormModal({ title, onClose, onSubmit, children }) {
   return (
-    <div className="modal-overlay" onMouseDown={onClose}>
+    <div className="modal-overlay" {...backdrop(onClose)}>
       <div className="customer-reg-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-top-bar">
           <h3>&gt; {title}</h3>

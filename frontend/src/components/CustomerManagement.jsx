@@ -5,6 +5,7 @@ import { formatPhone, isValidPhone } from '../utils/format.js';
 import { downloadExcel } from '../utils/excel.js';
 import Pagination from './Pagination.jsx';
 import { navigate } from '../router.js';
+import { backdrop } from '../utils/backdrop.js';
 
 const PAGE_SIZE = 20;
 
@@ -214,7 +215,7 @@ export default function CustomerManagement({ route }) {
       <Pagination page={page} total={list.length} pageSize={PAGE_SIZE} onChange={setPage} />
 
       {form && (
-        <div className="modal-overlay" onMouseDown={() => setForm(null)}>
+        <div className="modal-overlay" {...backdrop(() => setForm(null))}>
           <div className="customer-reg-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modal-top-bar">
               <h3>&gt; 계약자 {form.id ? '수정' : '등록'}</h3>
