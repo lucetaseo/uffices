@@ -2350,3 +2350,248 @@ body {
   font-size: 13px;
   white-space: pre-wrap;
 }
+
+/* ==========================================
+   10. 주소 이동 링크 · 하위 메뉴 탭
+   ========================================== */
+a.nav-link,
+a.brand-logo,
+a.dropdown-item,
+a.btn-quick {
+  color: inherit;
+  text-decoration: none;
+}
+
+.nav-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+a.dropdown-item {
+  display: block;
+  color: #fff;
+}
+
+a.btn-quick {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sub-nav {
+  display: flex;
+  gap: 4px;
+  padding: 8px 20px 0;
+  background: #f4f6fb;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sub-nav a {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 4px 4px 0 0;
+  background: #e5e9f2;
+  color: #475569;
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sub-nav a.active {
+  background: #1a6fe0;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* ==========================================
+   11. 모바일 (768px 이하) — 화면보다 넓어지는 요소 없애기
+   ========================================== */
+@media screen and (max-width: 768px) {
+  html,
+  body {
+    max-width: 100%;
+  }
+
+  .content {
+    padding: 8px;
+  }
+
+  .page-card {
+    padding: 12px;
+  }
+
+  .sub-nav {
+    padding: 6px 8px 0;
+  }
+
+  /* 입력창: 16px 이상이어야 아이폰에서 입력 시 화면이 확대되지 않음 */
+  input,
+  select,
+  textarea,
+  .input-text,
+  .input-search,
+  .input-select,
+  .input-date {
+    font-size: 16px !important;
+    max-width: 100%;
+  }
+
+  /* 등록/수정 양식: 항목명 위, 입력칸 아래로 쌓기 */
+  .form-grid-table,
+  .form-grid-table > tbody,
+  .form-grid-table > tbody > tr,
+  .form-grid-table > tbody > tr > td {
+    display: block;
+    width: 100% !important;
+  }
+
+  .form-grid-table > tbody > tr {
+    border-bottom: 1px solid #e5e9f2;
+  }
+
+  .form-grid-table .label-col,
+  .contract-editor .form-grid-table .label-col {
+    width: 100% !important;
+    text-align: left;
+    padding: 8px 12px 4px !important;
+    background: #f5f7fb;
+    border-bottom: none;
+    writing-mode: horizontal-tb;
+  }
+
+  .form-grid-table .input-col {
+    padding: 8px 12px 12px !important;
+    border-bottom: none;
+  }
+
+  .assign-type {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 14px;
+  }
+
+  .mobile-cell {
+    max-width: none;
+    min-width: 0;
+  }
+
+  .addr-input,
+  .name-input,
+  .input-text.full,
+  .filter-box .input-search.wide,
+  .customer-search-input {
+    width: 100% !important;
+  }
+
+  .inline-fields > .input-text,
+  .inline-fields > select {
+    min-width: 0;
+  }
+
+  .inline-label {
+    flex-wrap: wrap;
+  }
+
+  .info-guide {
+    display: block;
+    margin: 4px 0 0;
+  }
+
+  /* 상세 정보 표: 항목명 / 값 쌓기 */
+  .info-grid,
+  .info-grid > tbody,
+  .info-grid > tbody > tr,
+  .info-grid > tbody > tr > th,
+  .info-grid > tbody > tr > td {
+    display: block;
+    width: 100% !important;
+  }
+
+  .info-grid > tbody > tr > th {
+    text-align: left;
+    padding: 8px 10px 2px;
+    border-bottom: none;
+  }
+
+  .info-grid > tbody > tr > td {
+    padding: 2px 10px 10px;
+  }
+
+  /* 칸이 많은 표는 상자 안에서 가로 스크롤 */
+  .table-responsive,
+  .contract-table-container,
+  .detail-table-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .line-items {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .detail-table th,
+  .detail-table td,
+  .customer-table th,
+  .customer-table td {
+    white-space: nowrap;
+  }
+
+  .summary-box {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-label {
+    min-width: 80px;
+  }
+
+  .detail-tabs button {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 6px;
+  }
+
+  .customer-action-bar {
+    flex-wrap: wrap;
+  }
+
+  .customer-reg-modal,
+  .customer-reg-modal.wide {
+    width: 100% !important;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .modal-overlay {
+    align-items: flex-start;
+  }
+
+  .talk-modal {
+    width: 100% !important;
+  }
+
+  .filter-actions {
+    width: 100%;
+  }
+
+  .welcome {
+    font-size: 12px;
+  }
+
+  .ellipsis {
+    max-width: 100%;
+  }
+
+  .apt-cell {
+    min-width: 0;
+  }
+
+  .calendar-header-control {
+    flex-wrap: wrap;
+  }
+}

@@ -6,11 +6,17 @@ import { timeLabel } from '../utils/contract.js';
 import { WEEKDAYS, addDays, formatKoreanDate, toDateKey, today } from '../utils/date.js';
 import { won } from '../utils/format.js';
 import OffModal from '../components/OffModal.jsx';
+import { navigate } from '../router.js';
 
 // 기사모바일: 기사 계정으로 로그인하면 이 화면만 보입니다 (휴대폰 화면 기준).
-export default function EngineerApp() {
+export default function EngineerApp({ route }) {
   const { user, company, logout } = useAuth();
-  const [tab, setTab] = useState('schedule');
+  const tab = route?.path === '/engineer/off' ? 'off' : 'schedule';
+  // 기사 계정은 /engineer 주소만 사용
+  useEffect(() => {
+    if (route && route.path !== '/engineer' && route.path !== '/engineer/off') navigate('/engineer', { replace: true });
+  }, [route?.path]); // eslint-disable-line react-hooks/exhaustive-deps
+  const setTab = (t) => navigate(t === 'off' ? '/engineer/off' : '/engineer');
 
   return (
     <div className="engineer-app">
@@ -19,7 +25,16 @@ export default function EngineerApp() {
           <strong>{company?.name} 기사모바일</strong>
           <div className="sub-text light">{user.name} 기사님</div>
         </div>
-        <button type="button" className="btn-logout" onClick={logout}>로그아웃</button>
+        <button
+          type="button"
+          className="btn-logout"
+          onClick={async () => {
+            await logout();
+            navigate('/', { replace: true });
+          }}
+        >
+          로그아웃
+        </button>
       </header>
       <nav className="engineer-tabs">
         <button type="button" className={tab === 'schedule' ? 'active' : ''} onClick={() => setTab('schedule')}>내 일정</button>

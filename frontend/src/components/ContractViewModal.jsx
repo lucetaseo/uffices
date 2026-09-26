@@ -17,7 +17,7 @@ export default function ContractViewModal({ contractId, onClose, onChanged }) {
       .get(contractId)
       .then((c) => {
         setContract(c);
-        if (c.esign?.token) setSignUrl(`${location.origin}${location.pathname}#/sign/${c.esign.token}`);
+        if (c.esign?.token) setSignUrl(`${location.origin}/sign/${c.esign.token}`);
       })
       .catch((e) => {
         handleError(e);

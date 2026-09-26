@@ -64,7 +64,7 @@ export const browserAdapter = {
   clearSession() {
     localStorage.removeItem(SESSION_KEY);
   },
-  publicBaseUrl: () => `${location.origin}${location.pathname}`,
+  publicBaseUrl: () => location.origin,
   clientInfo: () => ({ userAgent: navigator.userAgent }),
   async resetDemoData() {
     localStorage.removeItem(DB_KEY);

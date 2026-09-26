@@ -12,9 +12,11 @@ import Pagination from '../components/Pagination.jsx';
 import { calcAmounts, itemsSummary, summarize, timeLabel } from '../utils/contract.js';
 import { formatAddress, won } from '../utils/format.js';
 import { downloadExcel } from '../utils/excel.js';
+import { goBack, match, navigate, navigateForward } from '../router.js';
 
 const PAGE_SIZE = 20;
 const FILTER_KEY = 'uffice.contractFilter';
+const PAGE_KEY = 'uffice.contractPage';
 
 function loadSavedFilter() {
   try {
@@ -24,21 +26,72 @@ function loadSavedFilter() {
   }
 }
 
-export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
+// 주소에 따라 목록 / 상세 / 작성 화면을 보여줌 (브라우저 뒤로가기로 이전 화면 이동)
+export default function ContractPage({ route }) {
+  const { can } = useAuth();
+  const [engineers, setEngineers] = useState([]);
+  useEffect(() => {
+    engineerApi.list().then(setEngineers).catch(() => {});
+  }, []);
+  const { path, query } = route;
+
+  // 저장: 이전 화면이 상세면 뒤로, 아니면 새 계약 상세로 / 취소: 이전 화면으로
+  const closeEditor = (saved) => {
+    if (saved && !window.history.state?.canGoBack) navigate(`/contracts/${saved.id}`, { replace: true });
+    else goBack('/contracts');
+  };
+
+  if (path === '/contracts/new') {
+    if (!can('contract.create')) return <NoPermission />;
+    const from = query.get('from');
+    return <ContractEditor key={`new-${from || ''}`} contractId={null} prefillFrom={from} engineers={engineers} onClose={closeEditor} />;
+  }
+  const edit = match('/contracts/:id/edit', path);
+  if (edit) {
+    if (!can('contract.edit')) return <NoPermission />;
+    return <ContractEditor key={`edit-${edit.id}`} contractId={Number(edit.id)} engineers={engineers} onClose={closeEditor} />;
+  }
+  const detail = match('/contracts/:id', path);
+  if (detail && /^\d+$/.test(detail.id)) {
+    return (
+      <ContractDetail
+        key={detail.id}
+        contractId={Number(detail.id)}
+        onBack={() => goBack('/contracts')}
+        onEdit={(c) => navigateForward(`/contracts/${c.id}/edit`)}
+        onNewWork={(c) => navigateForward(`/contracts/new?from=${c.id}`)}
+        onOpenGroup={(id) => navigateForward(`/contracts/${id}`)}
+      />
+    );
+  }
+  const trash = path === '/contracts/trash';
+  if (trash && !can('contract.delete')) return <NoPermission />;
+  return <ContractList key={trash ? 'trash' : 'main'} trash={trash} engineers={engineers} />;
+}
+
+function NoPermission() {
+  return (
+    <div className="page-card">
+      <p className="no-data">이 화면을 볼 권한이 없습니다.</p>
+    </div>
+  );
+}
+
+function ContractList({ trash, engineers }) {
   const { user, can, handleError } = useAuth();
   const showAmount = can('contract.amount');
 
   const [filter, setFilter] = useState(loadSavedFilter);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  // 쪽 번호는 기억해 두어, 상세에서 뒤로 왔을 때 같은 쪽을 보여줌
+  const [page, setPageState] = useState(() => Number(sessionStorage.getItem(`${PAGE_KEY}.${trash}`)) || 1);
+  const setPage = (n) => {
+    setPageState(n);
+    sessionStorage.setItem(`${PAGE_KEY}.${trash}`, String(n));
+  };
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [engineers, setEngineers] = useState([]);
   const [staff, setStaff] = useState([]);
-
-  // 화면 이동: 목록 → 상세(detailId) → 계약서 작성(editTarget)
-  const [editTarget, setEditTarget] = useState(null); // null | { id } 수정 | { prefill } 새 시공
-  const [detailId, setDetailId] = useState(null);
   const [viewId, setViewId] = useState(null);
   const [kakaoTarget, setKakaoTarget] = useState(null);
 
@@ -57,32 +110,21 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
     load();
   }, [load]);
 
+  // 검색 조건이 바뀌면 첫 쪽으로 (처음 열릴 때는 기억한 쪽 유지)
+  const firstFilter = useRef(true);
   useEffect(() => {
     setSelectedIds(new Set());
+    if (firstFilter.current) {
+      firstFilter.current = false;
+      return;
+    }
     setPage(1);
-  }, [filter, trash]);
-
-  // 휴지통 ↔ 목록을 실제로 전환했을 때만 상세/작성 화면 닫기 (처음 열릴 때는 제외)
-  const prevTrash = useRef(trash);
-  useEffect(() => {
-    if (prevTrash.current === trash) return;
-    prevTrash.current = trash;
-    setDetailId(null);
-    setEditTarget(null);
-  }, [trash]);
+  }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    engineerApi.list().then(setEngineers).catch(() => {});
     // 본인 건만 보는 실장에게는 작성자 필터가 의미 없으므로 숨김
     if (!isOwnScopeOnly(user)) userApi.staffOptions().then(setStaff).catch(() => {});
   }, [user]);
-
-  useEffect(() => {
-    if (openNew) {
-      if (can('contract.create') && !trash) setEditTarget({ prefill: null });
-      onOpenNewHandled();
-    }
-  }, [openNew]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (next) => {
     setFilter(next);
@@ -90,7 +132,9 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
   };
 
   const summary = useMemo(() => summarize(rows), [rows]);
-  const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const maxPage = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, maxPage); // 기억한 쪽이 범위를 넘으면 마지막 쪽
+  const pageRows = rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const toggle = (id) =>
     setSelectedIds((prev) => {
@@ -119,13 +163,6 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
     } catch (e) {
       handleError(e);
     }
-  };
-
-  // 저장하면 해당 계약 상세로, 취소하면 원래 화면(상세 또는 목록)으로
-  const closeEditor = async (saved) => {
-    setEditTarget(null);
-    if (saved) setDetailId(saved.id);
-    await load();
   };
 
   const handleExport = () => {
@@ -185,7 +222,7 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
           계약서
         </button>
         {can('contract.edit') && (
-          <button type="button" className="btn-outline-action" onClick={() => setEditTarget({ id: item.id })}>
+          <button type="button" className="btn-outline-action" onClick={() => navigateForward(`/contracts/${item.id}/edit`)}>
             수정
           </button>
         )}
@@ -196,33 +233,6 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
         )}
       </div>
     );
-
-  if (editTarget) {
-    return (
-      <ContractEditor
-        contractId={editTarget.id || null}
-        prefill={editTarget.prefill}
-        engineers={engineers}
-        onClose={closeEditor}
-      />
-    );
-  }
-
-  if (detailId) {
-    return (
-      <ContractDetail
-        key={detailId}
-        contractId={detailId}
-        onBack={() => {
-          setDetailId(null);
-          load();
-        }}
-        onEdit={(c) => setEditTarget({ id: c.id })}
-        onNewWork={(prefill) => setEditTarget({ prefill })}
-        onOpenGroup={(id) => setDetailId(id)}
-      />
-    );
-  }
 
   return (
     <div className="page-card">
@@ -239,7 +249,7 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
         actions={
           <>
             {!trash && can('contract.create') && (
-              <button type="button" className="btn-dark-lg sm" onClick={() => setEditTarget({ prefill: null })}>
+              <button type="button" className="btn-dark-lg sm" onClick={() => navigateForward('/contracts/new')}>
                 + 계약등록
               </button>
             )}
@@ -327,9 +337,9 @@ export default function ContractPage({ trash, openNew, onOpenNewHandled }) {
             onToggleAll={toggleAll}
             showAmount={showAmount}
             renderActions={renderActions}
-            onOpen={trash ? undefined : (c) => setDetailId(c.id)}
+            onOpen={trash ? undefined : (c) => navigateForward(`/contracts/${c.id}`)}
           />
-          <Pagination page={page} total={rows.length} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination page={currentPage} total={rows.length} pageSize={PAGE_SIZE} onChange={setPage} />
         </>
       )}
 

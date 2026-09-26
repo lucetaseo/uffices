@@ -47,6 +47,23 @@
 - 팀배정은 **팀원 전원**이 휴무일 때만 차단
 - 오전/오후 기준 시각(기본 12:00)은 설정에서 변경
 
+### 화면 주소
+
+화면마다 주소가 있어 휴대폰·브라우저의 **뒤로가기/앞으로가기/새로고침**이 사이트 안에서 동작하고, 주소를 공유할 수 있습니다.
+
+| 주소 | 화면 |
+|---|---|
+| `/contracts` · `/contracts/trash` | 계약 목록 · 휴지통 |
+| `/contracts/12` · `/contracts/12/edit` | 계약 상세 · 수정 |
+| `/contracts/new` · `/contracts/new?from=12` | 계약 등록 · 같은 현장 시공 추가 |
+| `/customers` `/schedule` `/progress` `/stats` | 계약자관리 · 일정관리 · 진행상황 · 통계 |
+| `/settings/users` `/settings/engineers` `/settings/teams` `/settings/products` `/settings/apartments` `/settings/schedule` | 설정 |
+| `/me` · `/admin` | 내 정보 · 업체/계정관리(운영자) |
+| `/engineer` · `/engineer/off` | 기사모바일 (내 일정 · 휴무 설정) |
+| `/sign/토큰` | 고객 전자서명 (로그인 불필요) |
+
+모바일(768px 이하)에서는 입력 양식이 위아래로 쌓이고, 칸이 많은 표는 표 안에서만 가로로 스크롤됩니다.
+
 ---
 
 ## 구성

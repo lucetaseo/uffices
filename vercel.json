@@ -4,8 +4,18 @@
   "buildCommand": "npm run build --prefix frontend",
   "outputDirectory": "frontend/dist",
   "framework": null,
-  "regions": ["icn1"],
+  "regions": [
+    "icn1"
+  ],
   "functions": {
-    "api/rpc.js": { "maxDuration": 15 }
-  }
+    "api/rpc.js": {
+      "maxDuration": 15
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

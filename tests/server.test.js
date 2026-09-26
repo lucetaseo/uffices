@@ -176,7 +176,7 @@ test('기사모바일: 계약 목록 차단, 본인 일정 보고 → 계약서�
 test('전자서명: 링크 조회(내부정보 제외) → 서명 → 이미지는 별도 저장', async () => {
   const [target] = await admin.ok('contracts', 'list', { esignStatus: '미발송' });
   const { token, url: link } = await admin.ok('contracts', 'requestSign', target.id);
-  assert.match(link, /^http:\/\/test\.local\/#\/sign\//);
+  assert.match(link, /^http:\/\/test\.local\/sign\/[\w-]+$/);
   const anon = client({ 'x-forwarded-for': '203.0.113.7' });
   const view = await anon.ok('esign', 'getByToken', token);
   assert.equal(view.contract.history, undefined);

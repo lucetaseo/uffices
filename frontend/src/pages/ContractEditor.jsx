@@ -27,6 +27,7 @@ import {
 } from '../constants.js';
 import {
   calcAmounts,
+  groupPrefill,
   offBlocks,
   slotOf,
   teamOffStatus,
@@ -95,7 +96,8 @@ function initialForm(contract, company, user) {
 }
 
 // 계약서 작성/수정 화면. contractId 가 없으면 신규.
-export default function ContractEditor({ contractId, prefill, engineers, onClose }) {
+// prefillFrom: 이 계약과 같은 계약자·현장으로 새 시공을 추가할 때 원본 계약 id
+export default function ContractEditor({ contractId, prefillFrom, engineers, onClose }) {
   const { user, company, can, handleError } = useAuth();
   const isEdit = !!contractId;
   const showAmount = can('contract.amount');
@@ -104,7 +106,7 @@ export default function ContractEditor({ contractId, prefill, engineers, onClose
   const brands = company?.brands?.length ? company.brands : BRANDS;
 
   const [contract, setContract] = useState(null);
-  const [form, setForm] = useState(() => (isEdit ? null : { ...initialForm(null, company, user), ...(prefill || {}) }));
+  const [form, setForm] = useState(() => (isEdit || prefillFrom ? null : initialForm(null, company, user)));
   const [saving, setSaving] = useState(false);
   const [productList, setProductList] = useState([]);
   const [aptList, setAptList] = useState([]);
@@ -115,6 +117,12 @@ export default function ContractEditor({ contractId, prefill, engineers, onClose
   const [viewOpen, setViewOpen] = useState(false);
 
   useEffect(() => {
+    if (!isEdit && prefillFrom) {
+      contractApi
+        .get(prefillFrom)
+        .then((src) => setForm({ ...initialForm(null, company, user), ...groupPrefill(src) }))
+        .catch(() => setForm(initialForm(null, company, user)));
+    }
     if (isEdit) {
       contractApi
         .get(contractId)
@@ -221,7 +229,7 @@ export default function ContractEditor({ contractId, prefill, engineers, onClose
       <div className="page-title-row">
         <h2>계약관리</h2>
         <button type="button" className="btn-outline-action" style={{ marginLeft: 'auto' }} onClick={() => onClose()}>
-          ← 목록으로
+          ← 뒤로
         </button>
       </div>
 

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { esign } from '../api/index.js';
 import ContractDocument from '../components/ContractDocument.jsx';
 
-// 고객용 전자서명 페이지 (#/sign/:token). 로그인 없이 링크로만 접근합니다.
+// 고객용 전자서명 페이지 (/sign/:token). 로그인 없이 링크로만 접근합니다.
 export default function SignPage({ token }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
