@@ -1,368 +1,223 @@
-import React, { useState } from 'react';
-import * as XLSX from 'xlsx';
-import './App.css'; // ★ 모달 및 전체 스타일 적용을 위한 필수 Import
+import React, { useEffect, useState } from 'react';
+import './App.css';
 
-import SearchFilter from './components/SearchFilter.jsx';
-import ContractTable from './components/ContractTable.jsx';
-import ContractModal from './components/ContractModal.jsx';
-import ScheduleManagement from './components/ScheduleManagement.jsx';
+import { useAuth } from './auth/AuthContext.jsx';
+import { API_MODE } from './api/index.js';
+import { ROLES, ROLE_LABELS } from './auth/permissions.js';
+import { formatKoreanDate, today } from './utils/date.js';
+
+import LoginPage from './pages/LoginPage.jsx';
+import SignPage from './pages/SignPage.jsx';
+import EngineerApp from './pages/EngineerApp.jsx';
+import ContractPage from './pages/ContractPage.jsx';
 import CustomerManagement from './components/CustomerManagement.jsx';
+import ScheduleManagement from './components/ScheduleManagement.jsx';
 import ProgressStatus from './components/ProgressStatus.jsx';
+import StatsPage from './pages/StatsPage.jsx';
+import AccountManagement from './pages/AccountManagement.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
+import { EngineerSettings, TeamSettings, ProductSettings, ApartmentSettings, ScheduleSettings } from './pages/settings/MasterSettings.jsx';
 
-const initialContracts = [
+// 메뉴 정의. 새 메뉴는 여기에 추가하고 필요한 권한(perm)만 지정하면 됩니다.
+const MENUS = [
   {
-    id: 1560,
-    brand: '더좋은집',
-    category: '청소',
-    type: '음성',
-    status: '미정',
-    schedules: [{ step: 1, date: '' }],
-    engineers: [{ step: 1, name: '김시공', phone: '010-1234-5678' }],
-    customer: '이다움',
-    phone: '010-9165-3263',
-    apt: '힐스테이트 장승배기 101-2204(84타입)',
-    actual: 442000,
-    balance: 442000
+    key: 'contract',
+    label: '계약관리',
+    icon: '📝',
+    perm: 'contract.view',
+    subs: [
+      { key: 'main', label: '계약관리' },
+      { key: 'trash', label: '휴지통', perm: 'contract.delete' },
+    ],
   },
+  { key: 'customer', label: '계약자관리', icon: '👤', perm: 'customer.view' },
+  { key: 'schedule', label: '일정관리', icon: '📅', perm: 'schedule.view' },
+  { key: 'progress', label: '진행상황', icon: '📑', perm: 'stats.view' },
+  { key: 'stats', label: '통계정보', icon: '📊', perm: 'stats.view' },
+  // 운영자 전용 (업체 관리자는 설정 > 사용자관리 에서 실장을 관리)
+  { key: 'accounts', label: '업체/계정관리', icon: '🔑', visible: (u) => u.role === ROLES.SUPER },
   {
-    id: 1559,
-    brand: '더스타트',
-    category: '줄눈',
-    type: '박람회',
-    status: '미정',
-    schedules: [{ step: 1, date: '2026-08-28(14:00)' }],
-    engineers: [{ step: 1, name: '박기사', phone: '010-9876-5432' }],
-    customer: '장희연',
-    phone: '010-8435-1596',
-    apt: '강릉 오션시티 아이파크 103-702(84타입)',
-    actual: 500000,
-    balance: 470000
-  }
+    key: 'setting',
+    label: '설정',
+    icon: '⚙️',
+    always: true,
+    subs: [
+      { key: 'users', label: '사용자관리', visible: (u) => u.role === ROLES.ADMIN },
+      { key: 'engineers', label: '기사관리', perm: 'settings.manage' },
+      { key: 'teams', label: '팀관리', perm: 'settings.manage' },
+      { key: 'products', label: '상품관리', perm: 'settings.manage' },
+      { key: 'apartments', label: '아파트관리', perm: 'settings.manage' },
+      { key: 'scheduleSetting', label: '일정관리설정', perm: 'settings.manage' },
+      { key: 'me', label: '내 정보' },
+    ],
+  },
 ];
 
+// 설정 하위 화면
+const SETTING_PAGES = {
+  users: AccountManagement,
+  engineers: EngineerSettings,
+  teams: TeamSettings,
+  products: ProductSettings,
+  apartments: ApartmentSettings,
+  scheduleSetting: ScheduleSettings,
+  me: SettingsPage,
+};
+
+function useHashRoute() {
+  const [hash, setHash] = useState(window.location.hash);
+  useEffect(() => {
+    const onChange = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+  return hash;
+}
+
 export default function App() {
-  // localStorage에서 마지막에 열람했던 탭 읽어오기
-  const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem('lastActiveTab') || 'contract';
-  });
+  const hash = useHashRoute();
+  const { user, loading } = useAuth();
 
-  const [subTab, setSubTab] = useState('main'); // 'main' | 'trash'
-  const [isContractDropdownOpen, setIsContractDropdownOpen] = useState(false);
+  // 고객 전자서명 페이지는 로그인 없이 접근
+  const signMatch = hash.match(/^#\/sign\/([\w-]+)/);
+  if (signMatch) return <SignPage token={signMatch[1]} />;
 
-  const [contracts, setContracts] = useState(initialContracts);
-  const [filteredContracts, setFilteredContracts] = useState(initialContracts);
-  const [selectedContract, setSelectedContract] = useState(null);
-  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
-  const [isSending, setIsSending] = useState(false);
+  if (loading) return <div className="page-loading">불러오는 중...</div>;
+  if (!user) return <LoginPage />;
+  if (user.role === ROLES.ENGINEER) return <EngineerApp />;
+  return <MainLayout />;
+}
 
-  // 알림톡 옵션 상태
-  const [talkBrand, setTalkBrand] = useState('더좋은집');
-  const [talkTemplate, setTalkTemplate] = useState('기사배정');
-  const [talkTarget, setTalkTarget] = useState('고객');
+function MainLayout() {
+  const { user, company, logout, can } = useAuth();
 
-  // 탭 변경 시 상태 저장
-  const handleTabChange = (tabName) => {
-    setActiveTab(tabName);
-    localStorage.setItem('lastActiveTab', tabName);
+  const allowed = (item) => {
+    if (item.visible) return item.visible(user);
+    return !item.perm || can(item.perm);
+  };
+  const menus = MENUS.filter((m) => {
+    if (user.role === ROLES.SUPER) return m.key === 'accounts' || m.key === 'setting';
+    return m.always || allowed(m);
+  }).map((m) => ({ ...m, subs: (m.subs || []).filter(allowed) }));
+
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('lastActiveTab') || 'contract');
+  const [subTab, setSubTab] = useState('main');
+  const [openDropdown, setOpenDropdown] = useState(null);
+  // 상단 빠른 버튼 → 이동한 화면에서 등록 모달을 한 번 열도록 전달 ('newContract' | 'newCustomer')
+  const [pendingAction, setPendingAction] = useState(null);
+  const clearAction = () => setPendingAction(null);
+
+  const currentTab = menus.some((m) => m.key === activeTab) ? activeTab : menus[0]?.key;
+
+  const go = (tab, sub) => {
+    setActiveTab(tab);
+    setSubTab(sub || menus.find((m) => m.key === tab)?.subs[0]?.key || 'main');
+    setOpenDropdown(null);
+    localStorage.setItem('lastActiveTab', tab);
   };
 
-  const handleSearch = (filterData) => {
-    const { aptName, customerName, phone } = filterData;
-    const result = contracts.filter((item) => {
-      const matchApt = !aptName || item.apt.includes(aptName);
-      const matchCustomer = !customerName || item.customer.includes(customerName);
-      const matchPhone = !phone || item.phone.includes(phone);
-      return matchApt && matchCustomer && matchPhone;
-    });
-    setFilteredContracts(result);
-  };
-
-  const handleExportExcel = () => {
-    if (filteredContracts.length === 0) {
-      alert('다운로드할 데이터가 없습니다.');
-      return;
-    }
-
-    const excelData = filteredContracts.map((item) => ({
-      '계약번호': item.id,
-      '브랜드': item.brand,
-      '구분': item.category,
-      '접수형태': item.type,
-      '시공상태': item.status,
-      '시공예정일': item.schedules.map(s => s.date).filter(Boolean).join(', ') || '미정',
-      '시공담당': item.engineers.map(e => e.name).filter(Boolean).join(', ') || '미배정',
-      '계약자': item.customer,
-      '연락처': item.phone,
-      '아파트명/현장': item.apt,
-      '실계약금': item.actual,
-      '잔액': item.balance
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, '계약목록');
-
-    const today = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(workbook, `계약관리_목록_${today}.xlsx`);
-  };
-
-  const handleAddContractSubmit = (newContractData) => {
-    const newContract = {
-      id: contracts.length > 0 ? Math.max(...contracts.map(c => c.id)) + 1 : 1000,
-      brand: newContractData.brand,
-      category: newContractData.constructionType || '기타',
-      type: newContractData.receptionType,
-      status: '미정',
-      schedules: [{ step: 1, date: newContractData.contractDate || '' }],
-      engineers: [{ step: 1, name: newContractData.manager || '', phone: '010-0000-0000' }],
-      customer: newContractData.name,
-      phone: newContractData.phone1,
-      apt: `${newContractData.aptName} ${newContractData.dong}동 ${newContractData.ho}호`,
-      actual: Number(newContractData.contractAmount) || 0,
-      balance: Number(newContractData.balanceAmount) || 0
-    };
-
-    const updated = [newContract, ...contracts];
-    setContracts(updated);
-    setFilteredContracts(updated);
-    alert('새로운 계약이 등록되었습니다.');
-  };
-
-  const handleOpenKakaoModal = (item) => {
-    setSelectedContract(item);
-    setTalkBrand(item.brand || '더좋은집');
-    setTalkTemplate('기사배정');
-    setTalkTarget('고객');
-  };
-
-  const getReceiverInfo = () => {
-    if (!selectedContract) return { name: '', phone: '' };
-    if (talkTarget === '기사') {
-      const engineer = selectedContract.engineers[0];
-      return {
-        name: engineer?.name || '담당기사',
-        phone: engineer?.phone || '등록된 기사 연락처 없음'
-      };
-    }
-    return {
-      name: selectedContract.customer,
-      phone: selectedContract.phone
-    };
-  };
-
-  const handleSendBizgo = async () => {
-    if (!selectedContract) return;
-    const receiver = getReceiverInfo();
-    setIsSending(true);
-
-    try {
-      await fetch('/api/notifications/bizgo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contractId: selectedContract.id,
-          receiverName: receiver.name,
-          phone: receiver.phone,
-          brand: talkBrand,
-          template: talkTemplate,
-          target: talkTarget
-        })
-      });
-      alert(`[${talkBrand} - ${talkTemplate} (${talkTarget}용)] 알림톡이 ${receiver.name}님에게 발송되었습니다.`);
-    } catch (error) {
-      alert(`[${talkBrand} - ${talkTemplate} (${talkTarget}용)] 알림톡을 발송했습니다. (테스트 환경)`);
-    } finally {
-      setIsSending(false);
-      setSelectedContract(null);
-    }
-  };
-
-  const receiver = getReceiverInfo();
+  const periodEnd = company?.periodEnd;
+  const daysLeft = periodEnd
+    ? Math.ceil((new Date(`${periodEnd}T00:00:00`) - new Date(`${today()}T00:00:00`)) / 86400000)
+    : null;
 
   return (
     <div className="app-container">
-      {/* 상단 네비게이션 헤더 */}
-      <header className="main-nav-bar">
-        <div 
-          className={`nav-item dropdown-parent ${activeTab === 'contract' ? 'active' : ''}`}
-          onMouseEnter={() => setIsContractDropdownOpen(true)}
-          onMouseLeave={() => setIsContractDropdownOpen(false)}
-          onClick={() => { handleTabChange('contract'); setSubTab('main'); }}
-        >
-          <div className="nav-icon">📝</div>
-          <span className="nav-label">계약관리</span>
-
-          {isContractDropdownOpen && (
-            <div className="dropdown-menu">
-              <div 
-                className={`dropdown-item ${subTab === 'main' ? 'active-sub' : ''}`}
-                onClick={(e) => { e.stopPropagation(); handleTabChange('contract'); setSubTab('main'); setIsContractDropdownOpen(false); }}
+      <header className="app-header">
+        <div className="brand-logo" onClick={() => go(menus[0]?.key)}>
+          <span className="logo-box">U</span>
+          <span className="logo-text">{company ? `${company.name} UFFICE` : 'UFFICE 운영자'}</span>
+        </div>
+        <nav className="main-nav-bar">
+          {menus.map((m) => {
+            const { subs } = m;
+            return (
+              <div
+                key={m.key}
+                className={`nav-item ${currentTab === m.key ? 'active' : ''}`}
+                onMouseEnter={() => subs.length > 1 && setOpenDropdown(m.key)}
+                onMouseLeave={() => setOpenDropdown(null)}
+                onClick={() => go(m.key)}
               >
-                계약관리
+                <div className="nav-icon">{m.icon}</div>
+                <span className="nav-label">{m.label}</span>
+                {openDropdown === m.key && (
+                  <div className="dropdown-menu">
+                    {subs.map((s) => (
+                      <div
+                        key={s.key}
+                        className={`dropdown-item ${currentTab === m.key && subTab === s.key ? 'active-sub' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          go(m.key, s.key);
+                        }}
+                      >
+                        {s.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div 
-                className={`dropdown-item ${subTab === 'trash' ? 'active-sub' : ''}`}
-                onClick={(e) => { e.stopPropagation(); handleTabChange('contract'); setSubTab('trash'); setIsContractDropdownOpen(false); }}
-              >
-                휴지통
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className={`nav-item ${activeTab === 'customer' ? 'active' : ''}`} onClick={() => handleTabChange('customer')}>
-          <div className="nav-icon">👤</div>
-          <span className="nav-label">계약자관리</span>
-        </div>
-
-        <div className={`nav-item ${activeTab === 'schedule' ? 'active' : ''}`} onClick={() => handleTabChange('schedule')}>
-          <div className="nav-icon">📅</div>
-          <span className="nav-label">일정관리</span>
-        </div>
-
-        <div className={`nav-item ${activeTab === 'progress' ? 'active' : ''}`} onClick={() => handleTabChange('progress')}>
-          <div className="nav-icon">📑</div>
-          <span className="nav-label">진행상황</span>
-        </div>
-
-        <div className={`nav-item ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => handleTabChange('stats')}>
-          <div className="nav-icon">📊</div>
-          <span className="nav-label">통계정보</span>
-        </div>
-
-        <div className={`nav-item ${activeTab === 'setting' ? 'active' : ''}`} onClick={() => handleTabChange('setting')}>
-          <div className="nav-icon">⚙️</div>
-          <span className="nav-label">설정</span>
-        </div>
+            );
+          })}
+        </nav>
       </header>
 
-      {/* 메인 콘텐츠 영역 */}
-      <main className="content">
-        {activeTab === 'contract' && subTab === 'main' && (
-          <>
-            <SearchFilter 
-              onSearch={handleSearch} 
-              onAddContract={() => setIsContractModalOpen(true)}
-              onExportExcel={handleExportExcel}
-            />
-            <ContractTable 
-              contracts={filteredContracts} 
-              onOpenKakao={handleOpenKakaoModal} 
-            />
-          </>
-        )}
-
-        {activeTab === 'contract' && subTab === 'trash' && (
-          <div style={{ padding: '30px', background: '#fff', borderRadius: '8px', marginTop: '15px' }}>
-            <h2>🗑️ 휴지통</h2>
-            <p style={{ color: '#666', marginTop: '10px' }}>삭제된 계약 목록을 확인하고 복구할 수 있는 영역입니다.</p>
-          </div>
-        )}
-
-        {activeTab === 'customer' && <CustomerManagement />}
-        {activeTab === 'schedule' && <ScheduleManagement />}
-        {activeTab === 'progress' && <ProgressStatus />}
-      </main>
-
-      {/* 전자계약 등록 모달 */}
-      <ContractModal 
-        isOpen={isContractModalOpen} 
-        onClose={() => setIsContractModalOpen(false)} 
-        onSubmit={handleAddContractSubmit} 
-      />
-
-      {/* 알림톡 발송 모달 */}
-      {selectedContract && (
-        <div className="modal-overlay" onClick={() => setSelectedContract(null)}>
-          <div className="modal-content talk-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>카카오 알림톡 발송</h3>
-            
-            <div className="talk-select-section">
-              <div className="form-group">
-                <label>발송 브랜드</label>
-                <div className="radio-btn-group">
-                  <label className={`radio-tag ${talkBrand === '더좋은집' ? 'selected' : ''}`}>
-                    <input type="radio" name="talkBrand" value="더좋은집" checked={talkBrand === '더좋은집'} onChange={(e) => setTalkBrand(e.target.value)} />
-                    더좋은집
-                  </label>
-                  <label className={`radio-tag ${talkBrand === '더스타트' ? 'selected' : ''}`}>
-                    <input type="radio" name="talkBrand" value="더스타트" checked={talkBrand === '더스타트'} onChange={(e) => setTalkBrand(e.target.value)} />
-                    더스타트
-                  </label>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>알림톡 템플릿</label>
-                <div className="radio-btn-group">
-                  <label className={`radio-tag ${talkTemplate === '기사배정' ? 'selected' : ''}`}>
-                    <input 
-                      type="radio" 
-                      name="talkTemplate" 
-                      value="기사배정" 
-                      checked={talkTemplate === '기사배정'} 
-                      onChange={(e) => setTalkTemplate(e.target.value)} 
-                    />
-                    기사배정 안내
-                  </label>
-                  <label className={`radio-tag ${talkTemplate === '계약완료' ? 'selected' : ''}`}>
-                    <input 
-                      type="radio" 
-                      name="talkTemplate" 
-                      value="계약완료" 
-                      checked={talkTemplate === '계약완료'} 
-                      onChange={(e) => {
-                        setTalkTemplate(e.target.value);
-                        setTalkTarget('고객');
-                      }} 
-                    />
-                    계약완료 안내
-                  </label>
-                </div>
-              </div>
-
-              {talkTemplate === '기사배정' && (
-                <div className="form-group">
-                  <label>수신 대상</label>
-                  <div className="radio-btn-group">
-                    <label className={`radio-tag target ${talkTarget === '고객' ? 'selected-target' : ''}`}>
-                      <input type="radio" name="talkTarget" value="고객" checked={talkTarget === '고객'} onChange={(e) => setTalkTarget(e.target.value)} />
-                      👤 고객용
-                    </label>
-                    <label className={`radio-tag target ${talkTarget === '기사' ? 'selected-target' : ''}`}>
-                      <input type="radio" name="talkTarget" value="기사" checked={talkTarget === '기사'} onChange={(e) => setTalkTarget(e.target.value)} />
-                      🔧 시공기사용
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="talk-preview-box">
-              <p><strong>수신자:</strong> {receiver.name} ({receiver.phone})</p>
-              <p><strong>현장:</strong> {selectedContract.apt}</p>
-              <div className="preview-text">
-                {talkTemplate === '기사배정' && talkTarget === '고객' && (
-                  `[${talkBrand}] ${selectedContract.customer}님, 담당 시공기사(${selectedContract.engineers[0]?.name || '배정중'})님이 배정되었습니다.`
-                )}
-                {talkTemplate === '기사배정' && talkTarget === '기사' && (
-                  `[${talkBrand}] ${selectedContract.engineers[0]?.name || '기사'}님, 신규 시공 건이 배정되었습니다. (현장: ${selectedContract.apt} / 고객: ${selectedContract.customer})`
-                )}
-                {talkTemplate === '계약완료' && (
-                  `[${talkBrand}] ${selectedContract.customer}님, 전자계약 작성이 정상적으로 완료되었습니다.`
-                )}
-              </div>
-            </div>
-
-            <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setSelectedContract(null)}>취소</button>
-              <button className="btn-confirm" onClick={handleSendBizgo} disabled={isSending}>
-                {isSending ? '발송 중...' : `${talkTarget}에게 알림톡 발송`}
-              </button>
-            </div>
-          </div>
+      <div className="sub-header">
+        <div className="quick-btn-group">
+          {can('customer.edit') && (
+            <button type="button" className="btn-quick blue" onClick={() => { go('customer'); setPendingAction('newCustomer'); }}>
+              👤 계약자 등록
+            </button>
+          )}
+          {can('contract.create') && (
+            <button type="button" className="btn-quick primary" onClick={() => { go('contract'); setPendingAction('newContract'); }}>
+              ✏️ 빠른계약등록
+            </button>
+          )}
         </div>
-      )}
+        <div className="welcome">
+          {API_MODE === 'demo' && (
+            <span className="demo-badge" title="서버 연결 전: 입력한 데이터는 이 브라우저에만 저장됩니다">
+              데모 모드 · 브라우저 저장
+            </span>
+          )}
+          <span className="welcome-date">{formatKoreanDate(today())}</span>
+          <span>
+            {user.name}({ROLE_LABELS[user.role]})님 환영합니다.
+          </span>
+          {daysLeft !== null && daysLeft <= 14 && (
+            <span className="period-warning">이용기간 만료 {daysLeft}일 전 ({periodEnd})</span>
+          )}
+          <button type="button" className="btn-logout" onClick={logout}>
+            로그아웃
+          </button>
+        </div>
+      </div>
+
+      <main className="content">
+        {currentTab === 'contract' && (
+          <ContractPage
+            trash={subTab === 'trash' && can('contract.delete')}
+            openNew={pendingAction === 'newContract'}
+            onOpenNewHandled={clearAction}
+          />
+        )}
+        {currentTab === 'customer' && (
+          <CustomerManagement openNew={pendingAction === 'newCustomer'} onOpenNewHandled={clearAction} />
+        )}
+        {currentTab === 'schedule' && <ScheduleManagement />}
+        {currentTab === 'progress' && <ProgressStatus />}
+        {currentTab === 'stats' && <StatsPage />}
+        {currentTab === 'accounts' && <AccountManagement />}
+        {currentTab === 'setting' && <SettingPage subTab={subTab} subs={menus.find((m) => m.key === 'setting').subs} />}
+      </main>
     </div>
   );
+}
+
+function SettingPage({ subTab, subs }) {
+  const key = subs.some((s) => s.key === subTab) ? subTab : subs[0].key;
+  const Page = SETTING_PAGES[key];
+  return <Page />;
 }

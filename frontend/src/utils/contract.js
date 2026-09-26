@@ -1,0 +1,102 @@
+// 계약 금액 계산. 저장하지 않고 항상 원본값에서 계산해 불일치를 막습니다.
+//   실계약금 = 시공총액 - 할인 - 상품권
+//   잔액     = 실계약금 - 입금합계
+
+export function calcAmounts(c) {
+  const total = Number(c.totalAmount) || 0;
+  const discount = Number(c.discount) || 0;
+  const voucher = Number(c.voucher) || 0;
+  const actual = total - discount - voucher;
+  const payments = c.payments || [];
+  const paid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const paidBy = {};
+  payments.forEach((p) => {
+    paidBy[p.method] = (paidBy[p.method] || 0) + (Number(p.amount) || 0);
+  });
+  return { total, discount, voucher, actual, paid, paidBy, balance: actual - paid };
+}
+
+export function summarize(contracts) {
+  const sum = {
+    count: contracts.length,
+    completed: 0,
+    canceled: 0,
+    total: 0,
+    discount: 0,
+    voucher: 0,
+    actual: 0,
+    paid: 0,
+    paidBy: {},
+    balance: 0,
+    canceledAmount: 0,
+  };
+  contracts.forEach((c) => {
+    const a = calcAmounts(c);
+    if (c.status === '시공완료') sum.completed += 1;
+    if (c.status === '취소') {
+      sum.canceled += 1;
+      sum.canceledAmount += a.actual;
+      return; // 취소 건은 매출 합계에서 제외
+    }
+    sum.total += a.total;
+    sum.discount += a.discount;
+    sum.voucher += a.voucher;
+    sum.actual += a.actual;
+    sum.paid += a.paid;
+    sum.balance += a.balance;
+    Object.entries(a.paidBy).forEach(([k, v]) => {
+      sum.paidBy[k] = (sum.paidBy[k] || 0) + v;
+    });
+  });
+  return sum;
+}
+
+// 가장 이른 시공예정일 (정렬용)
+export const firstScheduleDate = (c) =>
+  (c.schedules || []).map((s) => s.date).filter(Boolean).sort()[0] || '';
+
+// 목록/계약서에 표시할 시공내용 요약 (상품내역 + 자유입력)
+export function itemsSummary(c) {
+  const lines = (c.lineItems || []).map((l) => `${l.name}${l.qty > 1 ? ` x${l.qty}` : ''}`);
+  return [...lines, c.items].filter(Boolean).join(' / ');
+}
+
+// 시간 선택 목록: 시간미정 / 오전(시간미정) / 오후(시간미정) / 설정된 간격의 시각
+export function timeOptions(settings) {
+  const out = [];
+  const toMin = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+  for (let m = toMin(settings.startTime); m <= toMin(settings.endTime); m += settings.interval) {
+    out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+  }
+  return out;
+}
+
+// select 값 <-> 일정 필드 변환 ('' | 'AM' | 'PM' | 'HH:mm')
+export const timeValueOf = (s) => s.time || s.ampm || '';
+export const timeFieldsOf = (value) =>
+  value === 'AM' || value === 'PM' ? { time: '', ampm: value } : { time: value || '', ampm: '' };
+
+export function timeLabel(s) {
+  if (s.time) return s.time;
+  if (s.ampm === 'AM') return '오전';
+  if (s.ampm === 'PM') return '오후';
+  return '';
+}
+
+// 일정의 시간대 ('AM' | 'PM' | null) — 서버 규칙(api/schedule.js)과 동일
+export function slotOf(s, settings) {
+  if (s.time) return s.time < settings.amEnd ? 'AM' : 'PM';
+  if (s.ampm === 'AM' || s.ampm === 'PM') return s.ampm;
+  return null;
+}
+export const offBlocks = (period, slot) => period === 'DAY' || slot === null || slot === period;
+
+// 팀배정용: 해당 시간대에 팀원 몇 명이 휴무인지 (전원 휴무일 때만 배정 불가 — 서버 규칙과 동일)
+export function teamOffStatus(teamId, engineers, offOf, slot) {
+  const members = engineers.filter((e) => String(e.teamId) === String(teamId));
+  const offCount = members.filter((m) => {
+    const off = offOf(m.id);
+    return off && offBlocks(off.period, slot);
+  }).length;
+  return { total: members.length, offCount, allOff: members.length > 0 && offCount === members.length };
+}

@@ -1,118 +1,161 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { customers as customerApi } from '../api/index.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { formatPhone, isValidPhone } from '../utils/format.js';
+import { downloadExcel } from '../utils/excel.js';
+import Pagination from './Pagination.jsx';
 
-const initialCustomers = [
-  { id: 1101, userType: '개인', name: '추가)이다움', phone1: '010-9165-3263', phone2: '', zipcode: '', address1: '', address2: '' },
-  { id: 1100, userType: '개인', name: '추가)장혜연', phone1: '010-8435-1596', phone2: '', zipcode: '', address1: '', address2: '' },
-  { id: 1099, userType: '기업', name: '학산 한신 (가)', phone1: '010-9640-0788', phone2: '', zipcode: '', address1: '', address2: '' },
-  { id: 1098, userType: '개인', name: '윤석주', phone1: '010-9495-1563', phone2: '', zipcode: '', address1: '', address2: '' },
-  { id: 1097, userType: '개인', name: '조은주', phone1: '010-6623-5822', phone2: '', zipcode: '', address1: '', address2: '' },
-  { id: 1096, userType: '개인', name: '김해나', phone1: '010-6469-4578', phone2: '', zipcode: '', address1: '', address2: '' },
-  { id: 1095, userType: '개인', name: '김기도', phone1: '010-6378-8774', phone2: '010-3475-1755', zipcode: '', address1: '', address2: '' }
-];
+const PAGE_SIZE = 20;
 
-export default function CustomerManagement() {
-  const [customers, setCustomers] = useState(initialCustomers);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+const EMPTY_FORM = {
+  id: null,
+  userType: '개인',
+  name: '',
+  phone1: '',
+  phone2: '',
+  email: '',
+  zipcode: '',
+  address1: '',
+  address2: '',
+};
 
-  // 모달 폼 전용 상태값 (이미지 입력 항목 일치)
-  const [formData, setFormData] = useState({
-    userType: '개인',
-    name: '',
-    phone1_1: '010',
-    phone1_2: '',
-    phone1_3: '',
-    phone2_1: '010',
-    phone2_2: '',
-    phone2_3: '',
-    zipcode: '',
-    address1: '',
-    address2: ''
-  });
+export default function CustomerManagement({ openNew, onOpenNewHandled }) {
+  const { can, handleError } = useAuth();
+  const canEdit = can('customer.edit');
+  const [list, setList] = useState([]);
+  const [query, setQuery] = useState('');
+  const [appliedQuery, setAppliedQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [form, setForm] = useState(null); // null=모달 닫힘
+  const [duplicates, setDuplicates] = useState([]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  const load = useCallback(async () => {
+    try {
+      setList(await customerApi.list(appliedQuery));
+    } catch (e) {
+      handleError(e);
+    }
+  }, [appliedQuery, handleError]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (openNew) {
+      if (canEdit) setForm({ ...EMPTY_FORM });
+      onOpenNewHandled();
+    }
+  }, [openNew]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 연락처① 입력 시 기존 계약자 중복 확인
+  useEffect(() => {
+    if (!form || !isValidPhone(form.phone1)) {
+      setDuplicates([]);
+      return;
+    }
+    customerApi
+      .findByPhone(form.phone1)
+      .then((found) => setDuplicates(found.filter((c) => c.id !== form.id)))
+      .catch(() => setDuplicates([]));
+  }, [form?.phone1, form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (e) => {
     e.preventDefault();
+    setAppliedQuery(query);
+    setPage(1);
   };
 
-  // 등록 확인
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: name.startsWith('phone') ? formatPhone(value) : value }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
-      alert('이름을 입력해 주세요.');
+    if (!isValidPhone(form.phone1)) {
+      alert('연락처①을 올바르게 입력해 주세요. (예: 010-1234-5678)');
       return;
     }
-
-    const phone1 = `${formData.phone1_1}-${formData.phone1_2}-${formData.phone1_3}`;
-    const phone2 = formData.phone2_2 && formData.phone2_3 ? `${formData.phone2_1}-${formData.phone2_2}-${formData.phone2_3}` : '';
-
-    const newCustomer = {
-      id: customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1000,
-      userType: formData.userType,
-      name: formData.name,
-      phone1,
-      phone2,
-      zipcode: formData.zipcode,
-      address1: formData.address1,
-      address2: formData.address2
-    };
-
-    setCustomers([newCustomer, ...customers]);
-    setIsAddModalOpen(false);
-    setFormData({
-      userType: '개인',
-      name: '',
-      phone1_1: '010',
-      phone1_2: '',
-      phone1_3: '',
-      phone2_1: '010',
-      phone2_2: '',
-      phone2_3: '',
-      zipcode: '',
-      address1: '',
-      address2: ''
-    });
-    alert('계약자가 정상적으로 등록되었습니다.');
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm('해당 계약자를 삭제하시겠습니까?')) {
-      setCustomers(customers.filter(c => c.id !== id));
+    if (form.phone2 && !isValidPhone(form.phone2)) {
+      alert('연락처②를 올바르게 입력해 주세요.');
+      return;
+    }
+    if (duplicates.length && !window.confirm('같은 연락처로 등록된 계약자가 있습니다. 그래도 저장하시겠습니까?')) return;
+    try {
+      await customerApi.save(form);
+      alert(form.id ? '수정되었습니다.' : '계약자가 등록되었습니다.');
+      setForm(null);
+      load();
+    } catch (err) {
+      handleError(err);
     }
   };
 
-  const filteredCustomers = customers.filter(c =>
-    c.name.includes(searchQuery) || c.phone1.includes(searchQuery)
-  );
+  const handleDelete = async (item) => {
+    if (!window.confirm(`[${item.name}] 계약자를 삭제하시겠습니까?`)) return;
+    try {
+      await customerApi.remove(item.id);
+      load();
+    } catch (err) {
+      handleError(err);
+    }
+  };
+
+  const handleExport = () =>
+    downloadExcel(
+      list.map((c) => ({
+        번호: c.id,
+        유형: c.userType,
+        이름: c.name,
+        연락처1: c.phone1,
+        연락처2: c.phone2,
+        이메일: c.email,
+        주소: `${c.address1} ${c.address2}`.trim(),
+        계약건수: c.contractCount,
+      })),
+      '계약자목록',
+      '계약자관리',
+    );
+
+  const pageRows = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="customer-management-container">
+    <div className="page-card">
       <div className="page-header">
         <h2>계약자 관리</h2>
         <ul className="notice-list">
-          <li>계약을 등록하기 위한 계약자 기본정보를 등록하는 리스트입니다.</li>
-          <li>아래 등록하기 버튼을 클릭 후 등록을 계약자 등록을 진행해 주세요.</li>
+          <li>계약을 등록하기 위한 계약자 기본정보를 관리하는 리스트입니다.</li>
+          <li>계약 등록 시 입력한 고객은 연락처 기준으로 자동 등록/연결됩니다.</li>
         </ul>
       </div>
 
       <div className="customer-action-bar">
-        <div className="search-box">
-          <input 
-            type="text" 
+        <form className="search-box" onSubmit={handleSearch}>
+          <input
+            type="text"
             placeholder="이름 또는 연락처 검색"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             className="customer-search-input"
           />
-          <button type="button" className="btn-search-icon" onClick={handleSearch}>🔍</button>
-        </div>
-        <button type="button" className="btn-add-customer" onClick={() => setIsAddModalOpen(true)}>
-          + 등록하기
-        </button>
+          <button type="submit" className="btn-search-icon">
+            🔍
+          </button>
+        </form>
+        {canEdit && (
+          <button type="button" className="btn-add-customer" onClick={() => setForm({ ...EMPTY_FORM })}>
+            + 등록하기
+          </button>
+        )}
+        {can('excel.export') && (
+          <button type="button" className="btn-add-customer" onClick={handleExport}>
+            📄 엑셀다운로드
+          </button>
+        )}
+        <span className="sub-text" style={{ marginLeft: 'auto', alignSelf: 'center' }}>
+          총 {list.length}명
+        </span>
       </div>
 
       <div className="table-responsive">
@@ -120,52 +163,62 @@ export default function CustomerManagement() {
           <thead>
             <tr>
               <th>번호</th>
+              <th>유형</th>
               <th>이름</th>
               <th>연락처 ①</th>
-              <th>연락처</th>
+              <th>연락처 ②</th>
               <th>이메일</th>
               <th>주소</th>
-              <th>관리</th>
+              <th>계약</th>
+              {canEdit && <th>관리</th>}
             </tr>
           </thead>
           <tbody>
-            {filteredCustomers.length === 0 ? (
+            {pageRows.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#888' }}>
-                  등록된 계약자가 없습니다.
+                <td colSpan={canEdit ? 9 : 8} className="no-data">
+                  {appliedQuery ? '검색 결과가 없습니다.' : '등록된 계약자가 없습니다.'}
                 </td>
               </tr>
             ) : (
-              filteredCustomers.map((item) => (
+              pageRows.map((item) => (
                 <tr key={item.id}>
                   <td>{item.id}</td>
+                  <td>{item.userType}</td>
                   <td className="text-left bold-text">{item.name}</td>
                   <td>{item.phone1}</td>
                   <td>{item.phone2 || '-'}</td>
-                  <td>-</td>
-                  <td className="text-left">
-                    {item.address1 ? `${item.address1} ${item.address2}` : '-'}
-                  </td>
-                  <td>
-                    <div className="table-action-btns">
-                      <button type="button" className="btn-edit-icon" title="수정">✏️</button>
-                      <button type="button" className="btn-delete-icon" onClick={() => handleDelete(item.id)} title="삭제">🗑️</button>
-                    </div>
-                  </td>
+                  <td>{item.email || '-'}</td>
+                  <td className="text-left">{item.address1 ? `${item.address1} ${item.address2}` : '-'}</td>
+                  <td>{item.contractCount}건</td>
+                  {canEdit && (
+                    <td>
+                      <div className="table-action-btns">
+                        <button type="button" className="btn-edit-icon" title="수정" onClick={() => setForm({ ...EMPTY_FORM, ...item })}>
+                          ✏️
+                        </button>
+                        <button type="button" className="btn-delete-icon" title="삭제" onClick={() => handleDelete(item)}>
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+      <Pagination page={page} total={list.length} pageSize={PAGE_SIZE} onChange={setPage} />
 
-      {/* 이미지 기반 계약자 등록 모달 팝업 */}
-      {isAddModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsAddModalOpen(false)}>
-          <div className="customer-reg-modal" onClick={(e) => e.stopPropagation()}>
+      {form && (
+        <div className="modal-overlay" onMouseDown={() => setForm(null)}>
+          <div className="customer-reg-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modal-top-bar">
-              <h3>&gt; 계약자 등록</h3>
-              <button className="modal-close-x" onClick={() => setIsAddModalOpen(false)}>&times;</button>
+              <h3>&gt; 계약자 {form.id ? '수정' : '등록'}</h3>
+              <button type="button" className="modal-close-x" onClick={() => setForm(null)}>
+                &times;
+              </button>
             </div>
 
             <form onSubmit={handleSubmit} className="reg-table-form">
@@ -174,91 +227,65 @@ export default function CustomerManagement() {
                   <tr>
                     <td className="label-col">유형분류</td>
                     <td className="input-col">
-                      <label className="radio-item">
-                        <input 
-                          type="radio" 
-                          name="userType" 
-                          value="개인" 
-                          checked={formData.userType === '개인'} 
-                          onChange={handleInputChange} 
-                        />
-                        개인
-                      </label>
-                      <label className="radio-item">
-                        <input 
-                          type="radio" 
-                          name="userType" 
-                          value="기업" 
-                          checked={formData.userType === '기업'} 
-                          onChange={handleInputChange} 
-                        />
-                        기업
-                      </label>
+                      {['개인', '기업'].map((t) => (
+                        <label key={t} className="radio-item">
+                          <input type="radio" name="userType" value={t} checked={form.userType === t} onChange={handleChange} />
+                          {t}
+                        </label>
+                      ))}
                     </td>
                   </tr>
-
                   <tr>
-                    <td className="label-col">이름<span className="star">*</span></td>
+                    <td className="label-col">
+                      이름<span className="star">*</span>
+                    </td>
                     <td className="input-col">
-                      <input 
-                        type="text" 
-                        name="name" 
-                        value={formData.name} 
-                        onChange={handleInputChange} 
-                        className="input-text name-input" 
-                        required 
-                      />
+                      <input type="text" name="name" value={form.name} onChange={handleChange} className="input-text name-input" required />
                     </td>
                   </tr>
-
                   <tr>
-                    <td className="label-col">연락처 ①<span className="star">*</span></td>
+                    <td className="label-col">
+                      연락처 ①<span className="star">*</span>
+                    </td>
                     <td className="input-col">
-                      <div className="phone-group">
-                        <input type="text" name="phone1_1" value={formData.phone1_1} onChange={handleInputChange} className="input-text phone-part" />
-                        <span>-</span>
-                        <input type="text" name="phone1_2" value={formData.phone1_2} onChange={handleInputChange} className="input-text phone-part" maxLength={4} required />
-                        <span>-</span>
-                        <input type="text" name="phone1_3" value={formData.phone1_3} onChange={handleInputChange} className="input-text phone-part" maxLength={4} required />
-                        <span className="info-guide">
-                          ⓘ 기존에 등록된 연락처 중 입력한 연락처와 일치하는 경우가 있다면 아래영역에 표시됩니다.
-                        </span>
-                      </div>
+                      <input type="tel" name="phone1" value={form.phone1} onChange={handleChange} className="input-text" placeholder="010-0000-0000" required />
+                      {duplicates.length > 0 && (
+                        <div className="warn-box">
+                          ⓘ 같은 연락처로 등록된 계약자: {duplicates.map((d) => `${d.name}(No.${d.id})`).join(', ')}
+                        </div>
+                      )}
                     </td>
                   </tr>
-
                   <tr>
                     <td className="label-col">연락처 ②</td>
                     <td className="input-col">
-                      <div className="phone-group">
-                        <input type="text" name="phone2_1" value={formData.phone2_1} onChange={handleInputChange} className="input-text phone-part" />
-                        <span>-</span>
-                        <input type="text" name="phone2_2" value={formData.phone2_2} onChange={handleInputChange} className="input-text phone-part" maxLength={4} />
-                        <span>-</span>
-                        <input type="text" name="phone2_3" value={formData.phone2_3} onChange={handleInputChange} className="input-text phone-part" maxLength={4} />
-                      </div>
+                      <input type="tel" name="phone2" value={form.phone2} onChange={handleChange} className="input-text" placeholder="010-0000-0000" />
                     </td>
                   </tr>
-
+                  <tr>
+                    <td className="label-col">이메일</td>
+                    <td className="input-col">
+                      <input type="email" name="email" value={form.email} onChange={handleChange} className="input-text addr-input" />
+                    </td>
+                  </tr>
                   <tr>
                     <td className="label-col">주소</td>
-                    <td className="input-col">
-                      <div className="address-group">
-                        <div className="zip-row">
-                          <input type="text" name="zipcode" value={formData.zipcode} onChange={handleInputChange} className="input-text zip-input" readOnly placeholder="" />
-                          <button type="button" className="btn-dark-sm" onClick={() => alert('우편번호 검색 기능은 서버 연동 후 제공됩니다.')}>우편번호</button>
-                          <input type="text" name="address1" value={formData.address1} onChange={handleInputChange} className="input-text addr-input" placeholder="주소1" />
-                          <input type="text" name="address2" value={formData.address2} onChange={handleInputChange} className="input-text addr-input" placeholder="주소2" />
-                        </div>
-                      </div>
+                    <td className="input-col inline-fields">
+                      <input type="text" name="zipcode" value={form.zipcode} onChange={handleChange} className="input-text" placeholder="우편번호" style={{ width: 90 }} />
+                      <input type="text" name="address1" value={form.address1} onChange={handleChange} className="input-text addr-input" placeholder="주소" />
+                      <input type="text" name="address2" value={form.address2} onChange={handleChange} className="input-text addr-input" placeholder="상세주소" />
                     </td>
                   </tr>
                 </tbody>
               </table>
 
               <div className="form-bottom-btns">
-                <button type="submit" className="btn-dark-lg">등록확인</button>
-                <button type="button" className="btn-dark-lg cancel" onClick={() => setIsAddModalOpen(false)}>취소</button>
+                <button type="submit" className="btn-dark-lg">
+                  {form.id ? '수정완료' : '등록확인'}
+                </button>
+                <button type="button" className="btn-dark-lg cancel" onClick={() => setForm(null)}>
+                  취소
+                </button>
               </div>
             </form>
           </div>
