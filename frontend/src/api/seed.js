@@ -56,10 +56,10 @@ export function migrate(db) {
       changed = true;
     }
   });
-  // 업체 주소 코드 (예전 데모 데이터: 첫 업체를 thgood 으로)
+  // 업체 주소 코드 (예전 데모 데이터: 첫 업체를 thegood 으로)
   db.companies.forEach((c, i) => {
-    if (c.code === undefined && i === 0 && !db.companies.some((x) => x.code === 'thgood')) {
-      c.code = 'thgood';
+    if (c.code === undefined && i === 0 && !db.companies.some((x) => x.code === 'thegood')) {
+      c.code = 'thegood';
       changed = true;
     }
   });
@@ -198,7 +198,7 @@ export async function buildSeed(hashPassword) {
 
   const company = {
     id: nextId(db, 'companies'),
-    code: 'thgood', // 업체 주소: /thgood
+    code: 'thegood', // 업체 주소: /thegood
     name: '더좋은집',
     ceo: '장경국',
     bizNo: '888-51-01056',

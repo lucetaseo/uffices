@@ -125,7 +125,7 @@ function SuperAdminView() {
           <li>업체를 등록하면 해당 업체의 관리자 계정이 함께 발급됩니다.</li>
           <li>관리자는 로그인 후 [계정관리]에서 실장 계정을 만들고 권한을 나눠줄 수 있습니다.</li>
           <li>이용기간이 지나거나 사용정지된 업체의 계정은 로그인할 수 없습니다.</li>
-          <li>업체마다 <b>주소 코드</b>를 정하면 그 업체 직원·기사는 <b>{window.location.origin}/코드</b> 로 접속합니다. (예: /thgood)</li>
+          <li>업체마다 <b>주소 코드</b>를 정하면 그 업체 직원·기사는 <b>{window.location.origin}/코드</b> 로 접속합니다. (예: /thegood)</li>
         </ul>
       </div>
       <div className="customer-action-bar">
@@ -227,7 +227,7 @@ function SuperAdminView() {
               className="input-text"
               value={companyForm.code}
               onChange={(e) => setCompanyForm({ ...companyForm, code: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-              placeholder="예: thgood"
+              placeholder="예: thegood"
               maxLength={20}
               required
             />
