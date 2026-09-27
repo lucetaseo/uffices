@@ -314,7 +314,9 @@ function ManagerAccountsView() {
   }, [load]);
 
   const teamName = (id) => teamList.find((t) => t.id === id)?.name || '';
-  const shown = list.filter((m) => !query || m.name.includes(query) || m.loginId.includes(query));
+  // 번호: 등록 순서대로 1, 2, 3 … (목록은 최신 번호가 위)
+  const seq = new Map([...list].sort((a, b) => a.id - b.id).map((m, i) => [m.id, i + 1]));
+  const shown = [...list].sort((a, b) => b.id - a.id).filter((m) => !query || m.name.includes(query) || m.loginId.includes(query));
 
   const openNew = () =>
     setForm({
@@ -394,6 +396,7 @@ function ManagerAccountsView() {
         <table className="customer-table">
           <thead>
             <tr>
+              <th>번호</th>
               <th>아이디</th>
               <th>이름</th>
               <th>부서/직책</th>
@@ -408,11 +411,12 @@ function ManagerAccountsView() {
           <tbody>
             {list.length === 0 && (
               <tr>
-                <td colSpan={9} className="no-data">등록된 사용자가 없습니다.</td>
+                <td colSpan={10} className="no-data">등록된 사용자가 없습니다.</td>
               </tr>
             )}
             {shown.map((m) => (
               <tr key={m.id}>
+                <td>{seq.get(m.id)}</td>
                 <td>{m.loginId}</td>
                 <td className="bold-text">{m.name}</td>
                 <td>{[teamName(m.teamId), m.position].filter(Boolean).join(' / ') || '-'}</td>

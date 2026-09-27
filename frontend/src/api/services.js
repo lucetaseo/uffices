@@ -332,7 +332,7 @@ function masterTable(table, { normalize, sort, beforeRemove, present = (r) => r 
         db[table]
           .filter((r) => r.companyId === user.companyId)
           .filter((r) => includeInactive || (r.active !== false && r.visible !== false))
-          .sort(sort || ((a, b) => b.id - a.id))
+          .sort(sort || ((a, b) => a.id - b.id)) // 번호순 (등록 순서)
           .map(present),
       );
     },
@@ -376,7 +376,6 @@ const required = (v, msg) => {
 };
 
 export const engineers = masterTable('engineers', {
-  sort: (a, b) => a.name.localeCompare(b.name),
   // 비밀번호 해시는 내려주지 않음
   present: ({ passwordHash, ...rest }) => ({ ...rest, categories: categoriesOf(rest), hasPassword: !!passwordHash }),
   normalize: async (d, db, user) => {
@@ -428,7 +427,6 @@ export const engineers = masterTable('engineers', {
 });
 
 export const teams = masterTable('teams', {
-  sort: (a, b) => a.name.localeCompare(b.name),
   normalize: (d) => ({
     name: required(d.name, '팀 이름을 입력해 주세요.'),
     kind: d.kind === '시공팀' ? '시공팀' : '부서', // 시공팀은 계약서 '팀배정'에 사용
@@ -459,7 +457,6 @@ export const products = masterTable('products', {
 });
 
 export const apartments = masterTable('apartments', {
-  sort: (a, b) => a.name.localeCompare(b.name),
   normalize: (d) => ({
     sido: d.sido || '',
     sigungu: d.sigungu || '',
