@@ -75,11 +75,14 @@ function MySchedules() {
     }
   };
 
+  // '오늘 이후 30일'에서는 오늘 일정이 없어도 오늘 칸을 맨 위에 표시
   const grouped = useMemo(() => {
     const map = {};
+    if (range === 'upcoming') map[today()] = [];
     list.forEach((s) => (map[s.date] = map[s.date] || []).push(s));
-    return Object.entries(map);
-  }, [list]);
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  }, [list, range]);
+  const dayTag = (date) => (date === today() ? '오늘' : date === addDays(today(), 1) ? '내일' : '');
 
   return (
     <div className="engineer-body">
@@ -96,8 +99,11 @@ function MySchedules() {
       {grouped.map(([date, rows]) => (
         <section key={date}>
           <h4 className={`engineer-date ${date === today() ? 'is-today' : ''}`}>
-            {formatKoreanDate(date)} {date === today() && '· 오늘'}
+            {formatKoreanDate(date)}
+            {dayTag(date) && <span className={`day-tag ${date === today() ? 'today' : ''}`}>{dayTag(date)}</span>}
+            {rows.length > 0 && <span className="sub-text"> {rows.length}건</span>}
           </h4>
+          {rows.length === 0 && <div className="engineer-card empty">오늘 배정된 일정이 없습니다.</div>}
           {rows.map((s) => {
             const d = draftOf(s);
             return (
