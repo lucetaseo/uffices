@@ -33,7 +33,9 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
     load();
   }, [load]);
 
-  const filtered = rows.filter(
+  // 번호: 업체 안에서 등록 순서대로 1, 2, 3 … (목록은 최신 번호가 위)
+  const seq = new Map([...rows].sort((a, b) => a.id - b.id).map((r, i) => [r.id, i + 1]));
+  const filtered = [...rows].sort((a, b) => b.id - a.id).filter(
     (r) =>
       (!applied || searchKeys.some((k) => String(r[k] ?? '').includes(applied))) &&
       filters.every((f) => !filterValues[f.key] || (f.match ? f.match(r, filterValues[f.key]) : String(r[f.key]) === filterValues[f.key])),
@@ -179,7 +181,7 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
                 className={`${r.active === false ? 'inactive-row' : ''} ${onEdit ? 'clickable-row' : ''}`}
                 onClick={onEdit ? (e) => !e.target.closest('button') && onEdit(r) : undefined}
               >
-                <td>{r.id}</td>
+                <td>{seq.get(r.id)}</td>
                 {columns.map((c) => (
                   <td key={c.key} className={c.className || ''}>
                     {c.render ? c.render(r) : r[c.key] || '-'}
