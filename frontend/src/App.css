@@ -2682,3 +2682,220 @@ a.btn-quick {
     padding: 2px;
   }
 }
+
+/* ==========================================
+   13. 설정 > 기사 등록/수정 (기사 휴무일 관리 달력)
+   ========================================== */
+.engineer-form-page .section-title {
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+
+.engineer-form .label-col {
+  width: 180px;
+  text-align: center;
+}
+
+.engineer-form .plain-value {
+  font-size: 13px;
+  color: #333;
+}
+
+.engineer-form .check-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.engineer-form .phone-3,
+.engineer-form .email-row,
+.engineer-form .address-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.engineer-form .phone-3 .input-text {
+  width: 64px;
+}
+
+.engineer-form .email-row .input-text {
+  width: 150px;
+}
+
+.engineer-form .address-row .zip {
+  width: 70px;
+}
+
+.engineer-form .address-row .addr1,
+.engineer-form .address-row .addr2 {
+  width: 260px;
+}
+
+.btn-postcode {
+  background: #1a6fe0;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.off-cal-guide {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #444;
+}
+
+.off-cal-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.off-cal-controls .input-text {
+  width: auto;
+}
+
+.btn-add-calendar {
+  background: #333;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.off-legend {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #555;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.off-legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-left: 6px;
+}
+
+.off-legend .lg-DAY,
+.off-month-table td.off-DAY {
+  background: #9b6cf0;
+}
+
+.off-legend .lg-AM,
+.off-month-table td.off-AM {
+  background: linear-gradient(to bottom, #9b6cf0 50%, #efe7fd 50%);
+}
+
+.off-legend .lg-PM,
+.off-month-table td.off-PM {
+  background: linear-gradient(to bottom, #efe7fd 50%, #9b6cf0 50%);
+}
+
+.off-cal-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 6px;
+}
+
+.off-month {
+  width: 226px;
+}
+
+.off-month-title {
+  text-align: center;
+  font-size: 15px;
+  font-weight: bold;
+  padding: 6px 0 12px;
+  position: relative;
+}
+
+.off-month-remove {
+  position: absolute;
+  right: 2px;
+  top: 4px;
+  border: none;
+  background: none;
+  color: #999;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.off-month-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 11px;
+}
+
+.off-month-table th,
+.off-month-table td {
+  border: 1px solid #e3e6ec;
+  height: 34px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.off-month-table th {
+  background: #f8f9fb;
+  height: 30px;
+}
+
+.off-month-table th.sun {
+  color: #e11d48;
+}
+
+.off-month-table td.day {
+  cursor: pointer;
+}
+
+.off-month-table td.day:hover {
+  background: #f1ecfe;
+}
+
+.off-month-table td.off {
+  color: #fff;
+}
+
+.off-month-table td.off:hover {
+  filter: brightness(1.08);
+}
+
+@media screen and (max-width: 768px) {
+  .engineer-form .address-row .addr1,
+  .engineer-form .address-row .addr2,
+  .engineer-form .email-row select {
+    width: 100%;
+  }
+
+  .engineer-form .email-row input.input-text {
+    width: calc(50% - 12px);
+  }
+
+  .off-month {
+    width: 100%;
+  }
+
+  .off-month-table th,
+  .off-month-table td {
+    height: 40px;
+    font-size: 13px;
+  }
+}
+
+.off-month-table td.off-AM,
+.off-month-table td.off-PM {
+  color: #3b0764;
+}
