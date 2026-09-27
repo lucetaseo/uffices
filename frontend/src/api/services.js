@@ -75,11 +75,16 @@ async function checkPassword(db, rec, password) {
 }
 
 export const auth = {
-  async login(loginId, password) {
+  // companyCode: 업체 주소(uffices.vercel.app/thgood)에서 로그인하면 그 업체 계정만 허용
+  async login(loginId, password, companyCode) {
     const db = await loadDb();
     const id = String(loginId || '').trim();
+    const code = String(companyCode || '').trim().toLowerCase();
+    const company = code ? db.companies.find((c) => c.code === code) : null;
+    if (code && !company) throw new ApiError('존재하지 않는 업체 주소입니다. 주소를 확인해 주세요.');
+    const sameCompany = (rec) => !company || rec.companyId === company.id;
     // 기사 계정 (기사모바일)
-    const engineer = db.engineers.find((e) => e.loginId === id && e.passwordHash);
+    const engineer = db.engineers.find((e) => e.loginId === id && e.passwordHash && sameCompany(e));
     if (engineer) {
       await checkPassword(db, engineer, password);
       if (!engineer.active) throw new ApiError('사용이 중지된 기사 계정입니다. 사무실에 문의해 주세요.');
@@ -90,7 +95,7 @@ export const auth = {
       await setSession({ engineerId: engineer.id });
       return auth.me();
     }
-    const user = db.users.find((u) => u.loginId === id);
+    const user = db.users.find((u) => u.loginId === id && sameCompany(u));
     if (!user) throw new ApiError(LOGIN_FAIL_MSG);
     await checkPassword(db, user, password);
     if (!user.active) throw new ApiError('사용이 중지된 계정입니다. 관리자에게 문의해 주세요.');
@@ -128,7 +133,24 @@ export const auth = {
 // 업체 (운영자 전용)   GET/POST/PATCH /api/companies
 // ============================================================
 
+// 업체 주소 코드: uffices.vercel.app/{코드}  (영문 소문자로 시작, 영문 소문자·숫자·-, 2~20자)
+export const RESERVED_CODES = ['admin', 'api', 'sign', 'contracts', 'customers', 'schedule', 'progress', 'stats', 'settings', 'me', 'engineer', 'assets', 'login', 'uffice', 'www'];
+function normalizeCode(db, code, exceptId) {
+  const v = String(code || '').trim().toLowerCase();
+  if (!/^[a-z][a-z0-9-]{1,19}$/.test(v)) throw new ApiError('업체 주소 코드는 영문 소문자로 시작하는 영문·숫자·- 2~20자로 입력해 주세요. (예: thgood)');
+  if (RESERVED_CODES.includes(v)) throw new ApiError('사용할 수 없는 주소 코드입니다. 다른 코드를 입력해 주세요.');
+  if (db.companies.some((c) => c.code === v && c.id !== exceptId)) throw new ApiError('이미 다른 업체가 쓰고 있는 주소 코드입니다.');
+  return v;
+}
+
 export const companies = {
+  // 로그인 화면용 (로그인 전): 주소 코드로 업체 이름만 조회
+  async publicInfo(code) {
+    const db = await loadDb();
+    const c = db.companies.find((x) => x.code && x.code === String(code || '').toLowerCase());
+    return c ? { code: c.code, name: c.name } : null;
+  },
+
   async list() {
     const { db, user } = await session();
     if (user.role !== ROLES.SUPER) throw new ApiError('권한이 없습니다.', 'FORBIDDEN');
@@ -148,8 +170,10 @@ export const companies = {
     if (!company.periodStart || !company.periodEnd || company.periodStart > company.periodEnd) {
       throw new ApiError('이용기간을 올바르게 입력해 주세요.');
     }
+    const code = normalizeCode(db, company.code);
     const newCompany = {
       id: nextId(db, 'companies'),
+      code,
       name: company.name.trim(),
       ceo: company.ceo || '',
       bizNo: company.bizNo || '',
@@ -173,7 +197,8 @@ export const companies = {
     if (user.role !== ROLES.SUPER) throw new ApiError('권한이 없습니다.', 'FORBIDDEN');
     const c = db.companies.find((x) => x.id === id);
     if (!c) throw new ApiError('업체를 찾을 수 없습니다.', 'NOT_FOUND');
-    const allowed = ['name', 'ceo', 'bizNo', 'address', 'brands', 'periodStart', 'periodEnd', 'active'];
+    if ('code' in patch) patch = { ...patch, code: normalizeCode(db, patch.code, c.id) };
+    const allowed = ['code', 'name', 'ceo', 'bizNo', 'address', 'brands', 'periodStart', 'periodEnd', 'active'];
     allowed.forEach((k) => {
       if (k in patch) c[k] = patch[k];
     });

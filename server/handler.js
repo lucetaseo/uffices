@@ -93,6 +93,7 @@ const READ_ONLY = new Set([
   'engineerOffs.list',
   'engineerApp.mySchedules',
   'engineerApp.myOffs',
+  'companies.publicInfo',
   'scheduleSettings.get',
 ]);
 

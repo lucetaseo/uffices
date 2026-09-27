@@ -34,6 +34,7 @@ function SuperAdminView() {
   const openNewCompany = () =>
     setCompanyForm({
       id: null,
+      code: '',
       name: '',
       ceo: '',
       bizNo: '',
@@ -51,6 +52,7 @@ function SuperAdminView() {
     e.preventDefault();
     const f = companyForm;
     const company = {
+      code: f.code,
       name: f.name,
       ceo: f.ceo,
       bizNo: f.bizNo,
@@ -108,6 +110,11 @@ function SuperAdminView() {
     }
   };
 
+  const copyUrl = (code) => {
+    const url = `${window.location.origin}/${code}`;
+    navigator.clipboard?.writeText(url).then(() => alert(`복사했습니다: ${url}`), () => prompt('주소를 복사하세요', url));
+  };
+
   const t = today();
 
   return (
@@ -118,6 +125,7 @@ function SuperAdminView() {
           <li>업체를 등록하면 해당 업체의 관리자 계정이 함께 발급됩니다.</li>
           <li>관리자는 로그인 후 [계정관리]에서 실장 계정을 만들고 권한을 나눠줄 수 있습니다.</li>
           <li>이용기간이 지나거나 사용정지된 업체의 계정은 로그인할 수 없습니다.</li>
+          <li>업체마다 <b>주소 코드</b>를 정하면 그 업체 직원·기사는 <b>{window.location.origin}/코드</b> 로 접속합니다. (예: /thgood)</li>
         </ul>
       </div>
       <div className="customer-action-bar">
@@ -148,6 +156,14 @@ function SuperAdminView() {
                   <td className="bold-text">
                     {c.name}
                     <div className="sub-text">브랜드: {c.brands.join(', ')}</div>
+                    {c.code ? (
+                      <div className="company-url">
+                        <a href={`/${c.code}`} target="_blank" rel="noreferrer">{window.location.host}/{c.code}</a>
+                        <button type="button" className="btn-link" onClick={() => copyUrl(c.code)}>복사</button>
+                      </div>
+                    ) : (
+                      <div className="text-red sub-text">주소 코드 미설정 — [수정/연장]에서 정해 주세요</div>
+                    )}
                   </td>
                   <td>
                     {c.ceo}
@@ -187,7 +203,7 @@ function SuperAdminView() {
                       <button
                         type="button"
                         className="btn-dark-action"
-                        onClick={() => setCompanyForm({ ...c, brands: c.brands.join(', ') })}
+                        onClick={() => setCompanyForm({ ...c, code: c.code || '', brands: c.brands.join(', ') })}
                       >
                         수정/연장
                       </button>
@@ -205,6 +221,18 @@ function SuperAdminView() {
 
       {companyForm && (
         <FormModal title={companyForm.id ? '업체 수정 / 이용기간 연장' : '업체 등록 + 관리자 계정 발급'} onClose={() => setCompanyForm(null)} onSubmit={saveCompany}>
+          <Row label="주소 코드 *">
+            <span className="sub-text">{window.location.host}/</span>
+            <input
+              className="input-text"
+              value={companyForm.code}
+              onChange={(e) => setCompanyForm({ ...companyForm, code: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+              placeholder="예: thgood"
+              maxLength={20}
+              required
+            />
+            <div className="sub-text">영문 소문자·숫자·- (2~20자). 이 업체 직원·기사가 접속하는 주소입니다.{companyForm.id && ' 바꾸면 예전 주소는 쓸 수 없게 됩니다.'}</div>
+          </Row>
           <Row label="업체명 *">
             <input className="input-text addr-input" value={companyForm.name} onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })} required />
           </Row>

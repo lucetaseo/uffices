@@ -2931,3 +2931,14 @@ a.btn-quick {
   margin-top: 4px;
   font-size: 11px;
 }
+
+/* 운영자: 업체 주소 */
+.company-url {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.company-url a {
+  color: #1a6fe0;
+}

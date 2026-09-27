@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { API_MODE } from '../api/index.js';
+import { API_MODE, companies } from '../api/index.js';
 
-export default function LoginPage() {
+// companyCode: 업체 주소(uffices.vercel.app/thgood)로 들어오면 그 업체 로그인 화면
+export default function LoginPage({ companyCode = '' }) {
   const { login } = useAuth();
+  const [company, setCompany] = useState(undefined); // undefined: 확인 중, null: 없는 주소
+  useEffect(() => {
+    if (!companyCode) return;
+    companies.publicInfo(companyCode).then(setCompany).catch(() => setCompany(null));
+  }, [companyCode]);
   const [loginId, setLoginId] = useState(() => localStorage.getItem('lastLoginId') || '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,7 +23,7 @@ export default function LoginPage() {
     setSubmitting(true);
     setError('');
     try {
-      await login(loginId, password);
+      await login(loginId, password, companyCode);
       localStorage.setItem('lastLoginId', loginId.trim());
     } catch (err) {
       setError(err.message);
@@ -30,8 +36,9 @@ export default function LoginPage() {
       <div className="login-card">
         <div className="login-left">
           <span className="logo-box large">U</span>
-          <h1>UFFICE 유피스</h1>
+          <h1>{company ? `${company.name} UFFICE` : 'UFFICE 유피스'}</h1>
           <p className="login-sub">전자계약 · 시공일정 관리</p>
+          {companyCode && company === null && <p className="login-error">존재하지 않는 업체 주소입니다 ({companyCode}). 주소를 확인해 주세요.</p>}
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>

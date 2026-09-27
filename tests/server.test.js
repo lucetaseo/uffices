@@ -284,3 +284,33 @@ test('서버 연결 점검(/api/rpc GET): 비밀값은 숨기고 설정·DB 상�
   assert.ok(!JSON.stringify(r).includes(process.env.SESSION_SECRET));
   assert.ok(!JSON.stringify(r).includes(process.env.INIT_SUPER_PASSWORD));
 });
+
+test('업체 주소 코드: 로그인 화면 조회, 그 업체 계정만 로그인, 코드 중복·형식 검사', async () => {
+  const anon = client();
+  assert.deepEqual(await anon.ok('companies', 'publicInfo', 'thgood'), { code: 'thgood', name: '더좋은집' });
+  assert.equal(await anon.ok('companies', 'publicInfo', 'nope'), null);
+
+  const sup = client();
+  await sup.ok('auth', 'login', 'super', 'super-test-1234');
+  const other = await sup.ok('companies', 'create', {
+    company: { code: 'Other-Co', name: '다른업체', periodStart: '2026-01-01', periodEnd: '2027-12-31' },
+    admin: { loginId: 'otheradmin', password: 'other1234', name: '다른관리자' },
+  });
+  assert.equal(other.code, 'other-co', '소문자로 저장');
+  assert.equal((await sup('companies', 'create', {
+    company: { code: 'thgood', name: '중복', periodStart: '2026-01-01', periodEnd: '2027-12-31' },
+    admin: { loginId: 'dup1', password: 'dup12345', name: '중복' },
+  })).status, 400, '이미 쓰는 코드');
+  assert.equal((await sup('companies', 'update', other.id, { code: 'admin' })).status, 400, '예약어');
+  assert.equal((await sup('companies', 'update', other.id, { code: '한글' })).status, 400, '형식');
+
+  const a = client();
+  assert.equal((await a('auth', 'login', 'admin', 'admin1234', 'other-co')).status, 400, '다른 업체 주소에서는 로그인 불가');
+  assert.equal((await a('auth', 'login', 'admin', 'admin1234', 'nope')).status, 400, '없는 업체 주소');
+  const me = await a.ok('auth', 'login', 'admin', 'admin1234', 'thgood');
+  assert.equal(me.company.code, 'thgood');
+  const e = client();
+  assert.equal((await e('auth', 'login', 'gong', 'gong1234', 'other-co')).status, 400, '기사도 자기 업체 주소에서만');
+  await e.ok('auth', 'login', 'gong', 'gong1234', 'thgood');
+  await a.ok('auth', 'login', 'otheradmin', 'other1234', 'other-co');
+});
