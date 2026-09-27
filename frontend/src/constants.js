@@ -74,3 +74,7 @@ export const SORT_OPTIONS = [
 ];
 
 export const MAX_SCHEDULE_STEPS = 3;
+
+// 사용자관리: 부서 / 직책 (선택 목록)
+export const DEPARTMENTS = ['본사', '지부', '협력업체', '기타', '상담팀', '시공팀', '박람회팀'];
+export const POSITIONS = ['대표', '지부장', '이사', '상무', '전무', '실장', '부장', '차장', '과장', '대리', '주임', '사원', '팀장', '줄눈시공팀', '나노시공팀', '탄성시공팀', '청소시공팀', '기타'];

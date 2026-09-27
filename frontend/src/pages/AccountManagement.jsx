@@ -8,6 +8,7 @@ import {
   ROLES,
   permissionsOf,
 } from '../auth/permissions.js';
+import { DEPARTMENTS, POSITIONS } from '../constants.js';
 import { addDays, today } from '../utils/date.js';
 import { formatPhone } from '../utils/format.js';
 import { backdrop } from '../utils/backdrop.js';
@@ -328,6 +329,7 @@ function ManagerAccountsView() {
       permissions: DEFAULT_MANAGER_PERMISSIONS,
       dataScope: DATA_SCOPES.ALL,
       teamId: '',
+      department: '',
       position: '실장',
     });
 
@@ -347,6 +349,7 @@ function ManagerAccountsView() {
           permissions: form.permissions,
           dataScope: form.dataScope,
           teamId: form.teamId,
+          department: form.department,
           position: form.position,
           password: form.password || undefined,
         });
@@ -419,7 +422,7 @@ function ManagerAccountsView() {
                 <td>{seq.get(m.id)}</td>
                 <td>{m.loginId}</td>
                 <td className="bold-text">{m.name}</td>
-                <td>{[teamName(m.teamId), m.position].filter(Boolean).join(' / ') || '-'}</td>
+                <td>{[m.department || teamName(m.teamId), m.position].filter(Boolean).join(' / ') || '-'}</td>
                 <td>{m.phone || '-'}</td>
                 <td>{m.dataScope === DATA_SCOPES.OWN ? '본인 작성 건만' : '업체 전체'}</td>
                 <td className="text-left perm-summary">
@@ -466,11 +469,15 @@ function ManagerAccountsView() {
             <input className="input-text" placeholder="010-0000-0000" value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })} />
           </Row>
           <Row label="부서 / 직책">
-            <select className="input-text" value={form.teamId || ''} onChange={(e) => setForm({ ...form, teamId: e.target.value })}>
-              <option value="">팀 없음</option>
-              {teamList.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <select className="input-text" value={form.department || ''} onChange={(e) => setForm({ ...form, department: e.target.value })}>
+              <option value="">선택하세요</option>
+              {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
-            <input className="input-text" placeholder="직책 (예: 실장, 팀장)" value={form.position || ''} onChange={(e) => setForm({ ...form, position: e.target.value })} />
+            <select className="input-text" value={form.position || ''} onChange={(e) => setForm({ ...form, position: e.target.value })}>
+              <option value="">선택하세요</option>
+              {form.position && !POSITIONS.includes(form.position) && <option value={form.position}>{form.position}</option>}
+              {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
           </Row>
           <Row label="데이터 범위">
             <label className="radio-item">
