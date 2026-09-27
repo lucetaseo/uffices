@@ -2,11 +2,16 @@
 //   사용: npm run dev:api   (루트 .env 의 DATABASE_URL, SESSION_SECRET 사용)
 import http from 'node:http';
 import { handleRpc } from './handler.js';
+import { healthReport } from './health.js';
 
 const PORT = Number(process.env.API_PORT || 3001);
 
 http
   .createServer(async (req, res) => {
+    if (req.method === 'GET' && req.url.startsWith('/api/rpc')) {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify(await healthReport(), null, 2));
+      return;
+    }
     if (req.method !== 'POST' || !req.url.startsWith('/api/rpc')) {
       res.writeHead(404).end();
       return;

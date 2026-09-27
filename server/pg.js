@@ -28,7 +28,7 @@ function sslOption(url) {
 
 export function getPool() {
   if (!pool) {
-    const url = process.env.DATABASE_URL;
+    const url = String(process.env.DATABASE_URL || '').trim(); // 복사·붙여넣기 때 들어간 공백/줄바꿈 제거
     if (!url) throw new Error('DATABASE_URL 환경변수가 필요합니다.');
     pool = new pg.Pool({
       connectionString: url.replace(/[?&]sslmode=[^&]*/, ''),

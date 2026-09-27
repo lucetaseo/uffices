@@ -27,6 +27,7 @@ process.env.INIT_DEMO_DATA = 'true';
 
 const { handleRpc } = await import('../server/handler.js');
 const { closePool } = await import('../server/pg.js');
+const { healthReport } = await import('../server/health.js');
 
 // 로그인 쿠키를 기억하는 시험용 사용자
 function client(headers = {}) {
@@ -273,4 +274,13 @@ test('기사관리: 담당시공 여러 개, 주소(우편번호·상세), 예�
   await admin.ok('engineerOffs', 'set', { engineerId: saved.id, date: '2027-02-10', period: 'DAY', reason: '개인' });
   const offs = await admin.ok('engineerOffs', 'list', { engineerId: saved.id, from: '2027-02-01', to: '2027-02-28' });
   assert.equal(offs.length, 1);
+});
+
+test('서버 연결 점검(/api/rpc GET): 비밀값은 숨기고 설정·DB 상태만 표시', async () => {
+  const r = await healthReport();
+  assert.equal(r.DB연결, '정상');
+  assert.match(r.계정, /운영자 1개/);
+  assert.equal(r.설정값.DATABASE_URL, '있음');
+  assert.ok(!JSON.stringify(r).includes(process.env.SESSION_SECRET));
+  assert.ok(!JSON.stringify(r).includes(process.env.INIT_SUPER_PASSWORD));
 });
