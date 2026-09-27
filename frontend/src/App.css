@@ -2899,3 +2899,29 @@ a.btn-quick {
 .off-month-table td.off-PM {
   color: #3b0764;
 }
+
+/* 기사모바일: 오늘/내일 표시 */
+.engineer-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.day-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.day-tag.today {
+  background: #1a6fe0;
+  color: #fff;
+}
+
+.engineer-card.empty {
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
+}
