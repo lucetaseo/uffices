@@ -10,7 +10,8 @@
 import * as local from './services.js';
 import { remoteServices } from './remote.js';
 
-export const API_MODE = import.meta.env?.VITE_API_MODE === 'server' ? 'server' : 'demo';
+// 값 앞뒤 공백·대소문자 실수가 있어도 server 로 인식
+export const API_MODE = String(import.meta.env?.VITE_API_MODE || '').trim().toLowerCase() === 'server' ? 'server' : 'demo';
 const impl = API_MODE === 'server' ? remoteServices : local;
 
 export { ApiError } from './core.js';

@@ -63,6 +63,8 @@ export default function LoginPage() {
         {API_MODE === 'demo' && (
           <div className="login-demo">
             테스트 계정 — 운영자: super / super1234 · 관리자: admin / admin1234 · 실장: manager / manager1234 · 기사: gong / gong1234
+            <br />
+            ⚠ 데모 모드: 입력한 내용이 이 기기에만 저장됩니다. 서버 연결 상태는 <a href="/api/rpc" target="_blank" rel="noreferrer">/api/rpc</a> 에서 확인하세요.
           </div>
         )}
       </div>
