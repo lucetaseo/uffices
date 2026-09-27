@@ -38,6 +38,15 @@ export async function healthReport() {
     try {
       await client.query('SELECT 1');
       report.DB연결 = '정상';
+      // DB 왕복 시간: 서버(서울)와 DB 위치가 멀면 느려짐 → Supabase 프로젝트 지역을 서울로 권장
+      const times = [];
+      for (let i = 0; i < 3; i++) {
+        const t = Date.now();
+        await client.query('SELECT 1');
+        times.push(Date.now() - t);
+      }
+      const ms = Math.min(...times);
+      report.DB응답시간 = `${ms}ms ${ms <= 30 ? '(빠름)' : ms <= 100 ? '(보통)' : '(느림 — Supabase 프로젝트 지역이 서울(ap-northeast-2)이 아닐 수 있습니다)'}`;
       const t = await client.query(`SELECT to_regclass('public.users') IS NOT NULL AS ok`);
       if (!t.rows[0].ok) report.계정 = '아직 표가 없습니다 (첫 로그인 시도 때 자동 생성)';
       else {

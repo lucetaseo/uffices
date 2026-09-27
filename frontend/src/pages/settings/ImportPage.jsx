@@ -9,7 +9,25 @@ import { CATEGORIES } from '../../constants.js';
 // 설정 > 데이터 가져오기 (관리자 전용)
 //   1) 기사 목록 (엑셀/CSV: 이름, 아이디, 연락처)
 //   2) 예전 프로그램의 계약 '엑셀다운로드' 파일
-const BATCH = 100;
+const BATCH = 20; // 실서비스 DB 가 멀어도 한 번 요청이 시간 제한(60초) 안에 끝나도록 작게
+
+// 시간 초과·일시 오류면 잠시 뒤 더 작게 나눠 다시 시도 (이미 저장된 건은 서버가 건너뜀)
+async function sendWithRetry(rows, tries = 3) {
+  try {
+    return await imports.contracts(rows);
+  } catch (err) {
+    const retryable = err.code === 'SERVER' || err.code === 'NETWORK';
+    if (!retryable || tries <= 1) throw err;
+    await new Promise((r) => setTimeout(r, 1500));
+    if (rows.length > 5) {
+      const half = Math.ceil(rows.length / 2);
+      const a = await sendWithRetry(rows.slice(0, half), tries - 1);
+      const b = await sendWithRetry(rows.slice(half), tries - 1);
+      return { created: a.created + b.created, skipped: a.skipped + b.skipped, errors: [...a.errors, ...b.errors], newEngineers: [...a.newEngineers, ...b.newEngineers], newBrands: [...a.newBrands, ...b.newBrands] };
+    }
+    return sendWithRetry(rows, tries - 1);
+  }
+}
 
 const readFile = (file, as) =>
   new Promise((resolve, reject) => {
@@ -170,7 +188,7 @@ function ContractImport() {
     setProgress({ done: 0, total: rows.length });
     try {
       for (let i = 0; i < rows.length; i += BATCH) {
-        const r = await imports.contracts(rows.slice(i, i + BATCH));
+        const r = await sendWithRetry(rows.slice(i, i + BATCH));
         sum.created += r.created;
         sum.skipped += r.skipped;
         sum.errors.push(...r.errors);
@@ -181,6 +199,7 @@ function ContractImport() {
       setPreview(null);
     } catch (err) {
       handleError(err);
+      sum.errors.unshift({ legacyNo: '-', customerName: '', message: `중간에 멈췄습니다: ${err.message} → 같은 파일을 다시 올리면 이어서 가져옵니다(이미 들어간 건은 건너뜀).` });
     } finally {
       setResult(sum);
       setProgress(null);
