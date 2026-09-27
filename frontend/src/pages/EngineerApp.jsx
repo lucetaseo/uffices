@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { engineerApp } from '../api/index.js';
+import { API_MODE, engineerApp } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { MOBILE_STATUS, OFF_LABEL } from '../constants.js';
 import { timeLabel } from '../utils/contract.js';
@@ -7,6 +7,7 @@ import { WEEKDAYS, addDays, formatKoreanDate, toDateKey, today } from '../utils/
 import { won } from '../utils/format.js';
 import OffModal from '../components/OffModal.jsx';
 import { navigate } from '../router.js';
+import { useRefreshOnReturn } from '../utils/useRefreshOnReturn.js';
 
 // 기사모바일: 기사 계정으로 로그인하면 이 화면만 보입니다 (휴대폰 화면 기준).
 export default function EngineerApp({ route }) {
@@ -24,6 +25,11 @@ export default function EngineerApp({ route }) {
         <div>
           <strong>{company?.name} 기사모바일</strong>
           <div className="sub-text light">{user.name} 기사님</div>
+          {API_MODE === 'demo' && (
+            <div className="demo-badge engineer" title="서버 연결 전: 이 기기 브라우저에만 저장되어 PC·다른 휴대폰과 공유되지 않습니다">
+              데모 모드 · 이 기기에만 저장
+            </div>
+          )}
         </div>
         <button
           type="button"
@@ -50,16 +56,23 @@ function MySchedules() {
   const [range, setRange] = useState('upcoming');
   const [list, setList] = useState([]);
   const [drafts, setDrafts] = useState({});
+  const [offs, setOffs] = useState([]);
 
   const load = useCallback(() => {
     const t = today();
     const [from, to] = range === 'upcoming' ? [t, addDays(t, 30)] : [addDays(t, -30), addDays(t, -1)];
-    engineerApp.mySchedules({ from, to }).then(setList).catch(handleError);
+    Promise.all([engineerApp.mySchedules({ from, to }), engineerApp.myOffs({ from, to })])
+      .then(([sch, off]) => {
+        setList(sch);
+        setOffs(off);
+      })
+      .catch(handleError);
   }, [range, handleError]);
 
   useEffect(() => {
     load();
   }, [load]);
+  useRefreshOnReturn(load);
 
   const key = (s) => `${s.contractId}-${s.stepIndex}`;
   const draftOf = (s) => drafts[key(s)] || { mobileStatus: s.mobileStatus, memo: s.mobileMemo };
@@ -79,9 +92,11 @@ function MySchedules() {
   const grouped = useMemo(() => {
     const map = {};
     if (range === 'upcoming') map[today()] = [];
+    offs.forEach((o) => (map[o.date] = map[o.date] || []));
     list.forEach((s) => (map[s.date] = map[s.date] || []).push(s));
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
-  }, [list, range]);
+  }, [list, offs, range]);
+  const offOf = (date) => offs.find((o) => o.date === date);
   const dayTag = (date) => (date === today() ? '오늘' : date === addDays(today(), 1) ? '내일' : '');
 
   return (
@@ -102,8 +117,10 @@ function MySchedules() {
             {formatKoreanDate(date)}
             {dayTag(date) && <span className={`day-tag ${date === today() ? 'today' : ''}`}>{dayTag(date)}</span>}
             {rows.length > 0 && <span className="sub-text"> {rows.length}건</span>}
+            {offOf(date) && <span className={`off-chip off-${offOf(date).period}`}>{OFF_LABEL[offOf(date).period]} 휴무</span>}
           </h4>
-          {rows.length === 0 && <div className="engineer-card empty">오늘 배정된 일정이 없습니다.</div>}
+          {offOf(date) && <div className="sub-text">휴무 사유: {offOf(date).reason}</div>}
+          {rows.length === 0 && !offOf(date) && <div className="engineer-card empty">오늘 배정된 일정이 없습니다.</div>}
           {rows.map((s) => {
             const d = draftOf(s);
             return (
@@ -176,6 +193,7 @@ function MyOffs() {
   useEffect(() => {
     load();
   }, [load]);
+  useRefreshOnReturn(load);
 
   const move = (delta) => {
     const d = new Date(year, month - 1 + delta, 1);

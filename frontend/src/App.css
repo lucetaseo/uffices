@@ -2925,3 +2925,9 @@ a.btn-quick {
   font-size: 13px;
   text-align: center;
 }
+
+.demo-badge.engineer {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+}
