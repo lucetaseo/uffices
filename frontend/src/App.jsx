@@ -84,7 +84,7 @@ export default function App() {
   return <CompanyGate route={route} />;
 }
 
-// 로그인한 계정의 업체 주소(/thgood/...)로 맞춰서 보여줌. 운영자는 업체 코드 없는 주소(/admin)
+// 로그인한 계정의 업체 주소(/thegood/...)로 맞춰서 보여줌. 운영자는 업체 코드 없는 주소(/admin)
 function CompanyGate({ route }) {
   const { user, company } = useAuth();
   const code = user.role === ROLES.SUPER ? '' : company?.code || '';

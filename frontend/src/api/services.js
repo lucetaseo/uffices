@@ -75,7 +75,7 @@ async function checkPassword(db, rec, password) {
 }
 
 export const auth = {
-  // companyCode: 업체 주소(uffices.vercel.app/thgood)에서 로그인하면 그 업체 계정만 허용
+  // companyCode: 업체 주소(uffices.vercel.app/thegood)에서 로그인하면 그 업체 계정만 허용
   async login(loginId, password, companyCode) {
     const db = await loadDb();
     const id = String(loginId || '').trim();
@@ -137,7 +137,7 @@ export const auth = {
 export const RESERVED_CODES = ['admin', 'api', 'sign', 'contracts', 'customers', 'schedule', 'progress', 'stats', 'settings', 'me', 'engineer', 'assets', 'login', 'uffice', 'www'];
 function normalizeCode(db, code, exceptId) {
   const v = String(code || '').trim().toLowerCase();
-  if (!/^[a-z][a-z0-9-]{1,19}$/.test(v)) throw new ApiError('업체 주소 코드는 영문 소문자로 시작하는 영문·숫자·- 2~20자로 입력해 주세요. (예: thgood)');
+  if (!/^[a-z][a-z0-9-]{1,19}$/.test(v)) throw new ApiError('업체 주소 코드는 영문 소문자로 시작하는 영문·숫자·- 2~20자로 입력해 주세요. (예: thegood)');
   if (RESERVED_CODES.includes(v)) throw new ApiError('사용할 수 없는 주소 코드입니다. 다른 코드를 입력해 주세요.');
   if (db.companies.some((c) => c.code === v && c.id !== exceptId)) throw new ApiError('이미 다른 업체가 쓰고 있는 주소 코드입니다.');
   return v;
