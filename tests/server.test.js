@@ -349,3 +349,15 @@ test('데이터 가져오기: 기사 목록 + 예전 계약 파일(중복 없이
   assert.ok(c.schedules[0].engineerId, '시공담당 기사 연결');
   assert.equal((await manager('imports', 'contracts', rows)).status, 403, '실장은 가져오기 불가');
 });
+
+test('트래픽 절약: 가벼운 요청은 필요한 표만 읽고, 다른 데이터는 지우지 않음', async () => {
+  const before = (await admin.ok('contracts', 'list', {})).length;
+  const me = await admin.ok('auth', 'me');
+  assert.equal(me.company.code, 'thegood');
+  assert.ok((await admin.ok('teams', 'list')).length > 0, '팀 목록은 팀 표만 읽어도 나옴');
+  assert.ok((await admin.ok('engineers', 'list')).length > 0);
+  await admin.ok('auth', 'changePassword', 'admin1234', 'admin1234');
+  const after = (await admin.ok('contracts', 'list', {})).length;
+  assert.ok(before > 0);
+  assert.equal(after, before, '가벼운 요청 뒤에도 계약 데이터 그대로');
+});
