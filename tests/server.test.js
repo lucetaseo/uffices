@@ -253,3 +253,24 @@ test('계약 상세: 같은 계약자·현장 시공 묶음, 입금/환불/수�
   assert.equal(g2.notes[0].text, '고객 통화: 오전 선호');
   assert.equal(g2.notes[0].category, '청소');
 });
+
+test('기사관리: 담당시공 여러 개, 주소(우편번호·상세), 예전 기사 데이터 호환', async () => {
+  const list = await admin.ok('engineers', 'list', { includeInactive: true });
+  assert.ok(list.every((e) => Array.isArray(e.categories)), '예전 기사도 categories 로 내려줌');
+  const saved = await admin.ok('engineers', 'save', {
+    name: '황선근',
+    phone: '01044492514',
+    categories: ['청소', '줄눈', '없는품목'],
+    zipcode: '06133',
+    address: '서울특별시 강남구 테헤란로 123',
+    addressDetail: '101호',
+  });
+  assert.deepEqual(saved.categories, ['줄눈', '청소']);
+  assert.equal(saved.category, '줄눈·청소');
+  assert.equal(saved.phone, '010-4449-2514');
+  assert.equal(saved.zipcode, '06133');
+  assert.equal(saved.addressDetail, '101호');
+  await admin.ok('engineerOffs', 'set', { engineerId: saved.id, date: '2027-02-10', period: 'DAY', reason: '개인' });
+  const offs = await admin.ok('engineerOffs', 'list', { engineerId: saved.id, from: '2027-02-01', to: '2027-02-28' });
+  assert.equal(offs.length, 1);
+});

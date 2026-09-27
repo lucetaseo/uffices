@@ -23,6 +23,7 @@ import {
 } from './runtime.js';
 import { ROLES, DATA_SCOPES, permissionsOf, isOwnScopeOnly, ALL_PERMISSION_KEYS } from '../auth/permissions.js';
 import { digitsOnly, formatPhone } from '../utils/format.js';
+import { CATEGORIES } from '../constants.js';
 import {
   ApiError,
   authorize,
@@ -341,6 +342,9 @@ function masterTable(table, { normalize, sort, beforeRemove, present = (r) => r 
   };
 }
 
+// 예전 기사 데이터는 담당시공이 하나(category)뿐이라, 없으면 그것으로 채움
+const categoriesOf = (e) => (Array.isArray(e.categories) ? e.categories : CATEGORIES.filter((c) => c === e.category));
+
 const required = (v, msg) => {
   if (!String(v ?? '').trim()) throw new ApiError(msg);
   return String(v).trim();
@@ -349,7 +353,7 @@ const required = (v, msg) => {
 export const engineers = masterTable('engineers', {
   sort: (a, b) => a.name.localeCompare(b.name),
   // 비밀번호 해시는 내려주지 않음
-  present: ({ passwordHash, ...rest }) => ({ ...rest, hasPassword: !!passwordHash }),
+  present: ({ passwordHash, ...rest }) => ({ ...rest, categories: categoriesOf(rest), hasPassword: !!passwordHash }),
   normalize: async (d, db, user) => {
     const loginId = (d.loginId || '').trim();
     const existing = d.id ? db.engineers.find((e) => e.id === d.id) : null;
@@ -366,15 +370,23 @@ export const engineers = masterTable('engineers', {
     const teamId = db.teams.some((t) => t.id === Number(d.teamId) && t.companyId === user.companyId && t.kind === '시공팀')
       ? Number(d.teamId)
       : null;
+    const categories = Array.isArray(d.categories)
+      ? CATEGORIES.filter((c) => d.categories.includes(c))
+      : categoriesOf({ category: d.category });
     return {
       name: required(d.name, '기사 이름을 입력해 주세요.'),
-      category: d.category || '기타',
+      // 담당시공 여러 개 가능. category 는 목록·선택창 표시용 (예: "줄눈·청소")
+      categories,
+      category: categories.join('·') || '기타',
       phone: required(formatPhone(d.phone), '연락처를 입력해 주세요.'),
       loginId, // '기사모바일' 로그인용
       passwordHash,
       teamId,
       email: d.email || '',
-      address: d.address || '',
+      // 주소: 기사와 시공 현장 사이 거리 확인용 (우편번호 검색으로 입력)
+      zipcode: String(d.zipcode || '').trim(),
+      address: String(d.address || '').trim(),
+      addressDetail: String(d.addressDetail || '').trim(),
       memo: d.memo || '',
       active: d.active !== false,
     };

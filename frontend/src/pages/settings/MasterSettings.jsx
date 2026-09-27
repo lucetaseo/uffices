@@ -5,6 +5,8 @@ import { CATEGORIES, DEFAULT_SCHEDULE_SETTINGS } from '../../constants.js';
 import { formatPhone, won } from '../../utils/format.js';
 import Pagination from '../../components/Pagination.jsx';
 import { backdrop } from '../../utils/backdrop.js';
+import { match, navigateForward } from '../../router.js';
+import EngineerForm from './EngineerForm.jsx';
 
 export const PRODUCT_KINDS = ['패키지', '추가시공품목', '무료시공'];
 
@@ -16,7 +18,8 @@ const PAGE_SIZE = 20;
 //   fields:  [{ key, label, type: text|select|textarea|number|checkbox|tel, options?, required? }]
 //   filters: [{ key, placeholder, options }]  → 드롭다운 필터
 // ------------------------------------------------------------
-function MasterPage({ title, notices, api, columns, fields, filters = [], searchKeys, emptyForm, removeConfirm }) {
+//   onAdd/onEdit: 주면 팝업 대신 별도 화면으로 이동 (기사관리)
+function MasterPage({ title, notices, api, columns, fields, filters = [], searchKeys, emptyForm, removeConfirm, onAdd, onEdit }) {
   const { handleError } = useAuth();
   const [rows, setRows] = useState([]);
   const [query, setQuery] = useState('');
@@ -33,7 +36,7 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
   const filtered = rows.filter(
     (r) =>
       (!applied || searchKeys.some((k) => String(r[k] ?? '').includes(applied))) &&
-      filters.every((f) => !filterValues[f.key] || String(r[f.key]) === filterValues[f.key]),
+      filters.every((f) => !filterValues[f.key] || (f.match ? f.match(r, filterValues[f.key]) : String(r[f.key]) === filterValues[f.key])),
   );
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -147,7 +150,7 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
           <input className="customer-search-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="검색어" />
           <button type="submit" className="btn-search-icon">🔍</button>
         </form>
-        <button type="button" className="btn-add-customer" onClick={() => setForm({ ...emptyForm })}>
+        <button type="button" className="btn-add-customer" onClick={() => (onAdd ? onAdd() : setForm({ ...emptyForm }))}>
           + 등록하기
         </button>
         <span className="sub-text" style={{ marginLeft: 'auto', alignSelf: 'center' }}>총 {filtered.length}건</span>
@@ -171,7 +174,11 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
               </tr>
             )}
             {pageRows.map((r) => (
-              <tr key={r.id} className={r.active === false ? 'inactive-row' : ''}>
+              <tr
+                key={r.id}
+                className={`${r.active === false ? 'inactive-row' : ''} ${onEdit ? 'clickable-row' : ''}`}
+                onClick={onEdit ? (e) => !e.target.closest('button') && onEdit(r) : undefined}
+              >
                 <td>{r.id}</td>
                 {columns.map((c) => (
                   <td key={c.key} className={c.className || ''}>
@@ -180,7 +187,7 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
                 ))}
                 <td>
                   <div className="table-action-btns">
-                    <button type="button" className="btn-edit-icon" title="수정" onClick={() => setForm({ ...r })}>✏️</button>
+                    <button type="button" className="btn-edit-icon" title="수정" onClick={() => (onEdit ? onEdit(r) : setForm({ ...r }))}>✏️</button>
                     <button type="button" className="btn-delete-icon" title="삭제" onClick={() => remove(r)}>🗑️</button>
                   </div>
                 </td>
@@ -227,11 +234,16 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
   );
 }
 
-export function EngineerSettings() {
+export function EngineerSettings({ path = '' }) {
   const [crewTeams, setCrewTeams] = useState([]);
   useEffect(() => {
     teams.list().then((t) => setCrewTeams(t.filter((x) => x.kind === '시공팀'))).catch(() => {});
   }, []);
+  // /settings/engineers/new, /settings/engineers/:id → 기사 등록/수정 화면
+  if (match('/settings/engineers/new', path)) return <EngineerForm />;
+  const edit = match('/settings/engineers/:id', path);
+  if (edit) return <EngineerForm key={edit.id} engineerId={edit.id} />;
+
   const teamName = (id) => crewTeams.find((t) => t.id === id)?.name || '-';
   return (
     <MasterPage
@@ -239,34 +251,26 @@ export function EngineerSettings() {
       notices={[
         '시공을 진행하는 기사 정보를 등록하는 페이지입니다. 계약 등록/일정관리에서 기사를 배정할 때 사용됩니다.',
         "아이디와 비밀번호를 등록하면 기사가 같은 로그인 화면에서 '기사모바일'(내 일정 확인, 시공상태 보고, 휴무 설정)을 사용할 수 있습니다.",
+        '기사를 누르면 정보 수정과 휴무일 관리(달력)를 할 수 있습니다. 주소는 시공 현장과의 거리 확인에 사용됩니다.',
         '계약에 배정된 적이 있는 기사는 삭제 시 기록 보존을 위해 “미사용” 처리됩니다.',
       ]}
       api={engineers}
-      searchKeys={['name', 'phone', 'loginId']}
-      filters={[{ key: 'category', placeholder: '품목', options: CATEGORIES }]}
-      emptyForm={{ name: '', category: CATEGORIES[0], phone: '', loginId: '', password: '', teamId: '', email: '', address: '', memo: '', active: true }}
+      searchKeys={['name', 'phone', 'loginId', 'address']}
+      filters={[{ key: 'category', placeholder: '담당시공', options: CATEGORIES, match: (r, v) => (r.categories || []).includes(v) }]}
       removeConfirm={(r) => `[${r.name}] 기사를 삭제하시겠습니까?\n(배정 이력이 있으면 미사용 처리됩니다)`}
+      onAdd={() => navigateForward('/settings/engineers/new')}
+      onEdit={(r) => navigateForward(`/settings/engineers/${r.id}`)}
       columns={[
         { key: 'name', label: '이름', className: 'text-left bold-text' },
-        { key: 'category', label: '품목' },
+        { key: 'category', label: '담당시공' },
         { key: 'teamId', label: '소속팀', render: (r) => (r.teamId ? teamName(r.teamId) : '-') },
         { key: 'loginId', label: '아이디' },
         { key: 'hasPassword', label: '모바일 로그인', render: (r) => (r.loginId && r.hasPassword ? '가능' : <span className="sub-text">미설정</span>) },
         { key: 'phone', label: '연락처' },
+        { key: 'address', label: '주소', className: 'text-left', render: (r) => [r.address, r.addressDetail].filter(Boolean).join(' ') || '-' },
         { key: 'active', label: '사용', render: (r) => (r.active === false ? <span className="text-red">미사용</span> : '사용') },
       ]}
-      fields={[
-        { key: 'name', label: '이름', required: true },
-        { key: 'category', label: '품목', type: 'select', options: CATEGORIES },
-        { key: 'teamId', label: '소속 시공팀', type: 'select', options: [{ value: '', label: '없음' }, ...crewTeams.map((t) => ({ value: String(t.id), label: t.name }))], help: '팀배정된 일정은 소속 기사 모두의 기사모바일에 표시됩니다.' },
-        { key: 'phone', label: '연락처', type: 'tel', required: true },
-        { key: 'loginId', label: '아이디', help: '기사모바일 로그인용 (영문/숫자)' },
-        { key: 'password', label: '비밀번호', type: 'password', help: '기사모바일 로그인 비밀번호 (4자 이상)' },
-        { key: 'email', label: '이메일', type: 'email' },
-        { key: 'address', label: '주소', wide: true },
-        { key: 'memo', label: '메모', type: 'textarea' },
-        { key: 'active', label: '사용여부', type: 'checkbox', checkLabel: '사용 (해제 시 배정 목록에서 제외)' },
-      ]}
+      fields={[]}
     />
   );
 }

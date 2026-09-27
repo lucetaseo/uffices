@@ -222,11 +222,11 @@ function MainLayout({ route }) {
 }
 
 function SettingPage({ path, subs }) {
-  const sub = subs.find((s) => path === s.path);
+  const sub = subs.find((s) => path === s.path || path.startsWith(`${s.path}/`));
   useEffect(() => {
     if (!sub && subs[0]) navigate(subs[0].path, { replace: true });
   }, [path]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!sub) return null;
   const Page = SETTING_PAGES[sub.key];
-  return <Page />;
+  return <Page path={path} />;
 }
