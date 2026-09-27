@@ -2942,3 +2942,57 @@ a.btn-quick {
 .company-url a {
   color: #1a6fe0;
 }
+
+/* 설정 > 데이터 가져오기 */
+.import-box {
+  border: 1px solid #dce1e8;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.import-box h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.btn-file {
+  display: inline-block;
+  margin-top: 8px;
+  background: #1a6fe0;
+  color: #fff;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.import-preview {
+  max-height: 360px;
+  overflow: auto;
+  margin-top: 12px;
+}
+
+.import-summary {
+  margin-top: 12px;
+}
+
+.import-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.import-progress {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.import-result {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #f0f7ff;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+}

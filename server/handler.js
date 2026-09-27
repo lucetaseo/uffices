@@ -68,6 +68,7 @@ const SERVICES = {
   engineerOffs: services.engineerOffs,
   engineerApp: services.engineerApp,
   scheduleSettings: services.scheduleSettings,
+  imports: services.imports,
 };
 const BLOCKED = new Set(['auth.resetDemoData']);
 

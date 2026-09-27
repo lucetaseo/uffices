@@ -314,3 +314,38 @@ test('업체 주소 코드: 로그인 화면 조회, 그 업체 계정만 로그
   await e.ok('auth', 'login', 'gong', 'gong1234', 'thegood');
   await a.ok('auth', 'login', 'otheradmin', 'other1234', 'other-co');
 });
+
+test('데이터 가져오기: 기사 목록 + 예전 계약 파일(중복 없이, 기사 자동 연결)', async () => {
+  const { parseLegacyHtml, mapLegacyRow } = await import('../frontend/src/utils/legacyImport.js');
+  const row = (no, brand, cat, name, site, date1, who1, status) => `<tr>
+    <td>${no}</td><td>${brand}</td><td>${cat}</td><td>박람</td><td>시공</td><td>${status}</td><td>2026-05-01</td>
+    <td>${name}(승인)</td><td>010-1111-2222</td><td>${site}</td><td>84A</td>
+    <!--<td>욕실2개 + 현관</td><td>주방 벽타일</td>--><!--<td>후기 조건</td><td>실리콘 서비스</td>-->
+    <td>1,000,000</td><td>할인금액 : 100,000</td><td>상품권 : 0</td><td>900,000</td><td>300,000</td><td>600,000</td>
+    <td>① : ${date1}</td><td>② : </td><td>${status}</td><td>① : ${who1}</td><td>② : </td><td>현관 먼저</td><!--<td>잔금 메모</td>--><td></td><td></td><td></td></tr>`;
+  const html = `<table><thead><tr><td>번호</td></tr></thead><tbody>
+    ${row(9001, '더좋은집', '줄눈', '추가)가져오기고객', '시험아파트101-1001호', '2026-06-01(9:00)', '줄)가져온기사', '미정')}
+    ${row(9002, '신화홈케어', '청소', '가져오기고객2', '-', '(무관)', '', '취소')}
+  </tbody></table>`;
+  const rows = parseLegacyHtml(html).map(mapLegacyRow);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].customerName, '가져오기고객');
+  assert.deepEqual([rows[0].aptName, rows[0].dong, rows[0].ho], ['시험아파트', '101', '1001']);
+  assert.equal(rows[0].schedules[0].time, '09:00');
+  assert.match(rows[0].items, /욕실2개/);
+
+  const eng = await admin.ok('imports', 'engineers', [{ name: '청)이관기사', loginId: 'importeng', phone: '010-3333-4444' }]);
+  assert.equal(eng.created, 1);
+  const r1 = await admin.ok('imports', 'contracts', rows);
+  assert.equal(r1.created, 2, JSON.stringify(r1.errors));
+  assert.deepEqual(r1.newEngineers, ['줄)가져온기사']);
+  assert.deepEqual(r1.newBrands, ['신화홈케어']);
+  const r2 = await admin.ok('imports', 'contracts', rows);
+  assert.equal(r2.created, 0);
+  assert.equal(r2.skipped, 2, '같은 예전 번호는 건너뜀');
+
+  const list = await admin.ok('contracts', 'list', { keyword: '가져오기고객' });
+  const c = (list.items || list).find((x) => x.customerName === '가져오기고객');
+  assert.ok(c.schedules[0].engineerId, '시공담당 기사 연결');
+  assert.equal((await manager('imports', 'contracts', rows)).status, 403, '실장은 가져오기 불가');
+});

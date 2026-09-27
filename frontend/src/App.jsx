@@ -17,6 +17,7 @@ import ProgressStatus from './components/ProgressStatus.jsx';
 import StatsPage from './pages/StatsPage.jsx';
 import AccountManagement from './pages/AccountManagement.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
+import ImportPage from './pages/settings/ImportPage.jsx';
 import { EngineerSettings, TeamSettings, ProductSettings, ApartmentSettings, ScheduleSettings } from './pages/settings/MasterSettings.jsx';
 
 // 메뉴 정의. 새 메뉴는 여기에 추가하고 주소(path)와 필요한 권한(perm)만 지정하면 됩니다.
@@ -50,6 +51,7 @@ const MENUS = [
       { key: 'products', label: '상품관리', path: '/settings/products', perm: 'settings.manage' },
       { key: 'apartments', label: '아파트관리', path: '/settings/apartments', perm: 'settings.manage' },
       { key: 'scheduleSetting', label: '일정관리설정', path: '/settings/schedule', perm: 'settings.manage' },
+      { key: 'import', label: '데이터 가져오기', path: '/settings/import', visible: (u) => u.role === ROLES.ADMIN },
       { key: 'me', label: '내 정보', path: '/me' },
     ],
   },
@@ -63,6 +65,7 @@ const SETTING_PAGES = {
   products: ProductSettings,
   apartments: ApartmentSettings,
   scheduleSetting: ScheduleSettings,
+  import: ImportPage,
   me: SettingsPage,
 };
 
