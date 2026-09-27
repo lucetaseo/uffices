@@ -50,6 +50,7 @@ const rows = async (client, sql, params = []) => (await client.query(sql, params
 // 요청 범위(scope)에 필요한 데이터만 읽어 업무 로직이 쓰는 db 객체 형태로 만듦
 //   scope.companyId: 이 업체의 업무 데이터 로드
 //   scope.allCompanies: 운영자 — 업체별 계약 건수만 필요 → 계약은 요약만 로드 (저장 안 함)
+//   scope.tables: 읽을 업체 표 목록 (가벼운 요청은 계약 등 큰 표를 읽지 않음)
 //   scope.signatureFor: 이 계약의 서명 이미지도 함께 로드 (계약서 보기)
 export async function loadSnapshot(client, scope) {
   const db = { seq: {}, version: 2 };
@@ -65,8 +66,10 @@ export async function loadSnapshot(client, scope) {
   for (const key of ['companies', 'users', 'engineers']) {
     db[key] = (await rows(client, `SELECT data FROM ${TABLE_MAP[key]} ORDER BY id`)).map(toObj);
   }
+  // scope.tables: 이 요청에 필요한 업체 표만 (없으면 전부) — 트래픽 절약
+  const wanted = scope.tables || COMPANY_SCOPED;
   for (const key of COMPANY_SCOPED) {
-    if (scope.companyId) {
+    if (scope.companyId && wanted.includes(key)) {
       db[key] = (await rows(client, `SELECT data FROM ${TABLE_MAP[key]} WHERE company_id = $1 ORDER BY id`, [scope.companyId])).map(toObj);
     } else {
       db[key] = [];

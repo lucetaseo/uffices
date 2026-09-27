@@ -98,6 +98,22 @@ const READ_ONLY = new Set([
   'scheduleSettings.get',
 ]);
 
+// 트래픽 절약: 자주 불리는 가벼운 요청은 필요한 업체 표만 읽음 (나머지는 계약 등 전체)
+//   여기 적은 함수가 다른 표를 쓰게 바뀌면 목록도 함께 고쳐야 합니다.
+const LIGHT_TABLES = {
+  'auth.me': [],
+  'auth.login': [],
+  'auth.logout': [],
+  'auth.changePassword': [],
+  'companies.publicInfo': [],
+  'users.staffOptions': [],
+  'engineers.list': [],
+  'teams.list': ['teams'],
+  'products.list': ['products'],
+  'apartments.list': ['apartments'],
+  'scheduleSettings.get': [],
+};
+
 const STATUS = { UNAUTHORIZED: 401, FORBIDDEN: 403, NOT_FOUND: 404 };
 
 // 서버 인스턴스마다 첫 요청 때 한 번 DB 준비 (표 생성 / 최초 운영자 계정)
@@ -160,6 +176,7 @@ export async function handleRpc({ body, headers }) {
     } else {
       const who = await resolveCompanyId(client, ctx.session);
       scope = who.isSuper ? { allCompanies: true } : { companyId: who.companyId };
+      if (LIGHT_TABLES[name]) scope.tables = LIGHT_TABLES[name];
       if (name === 'contracts.get') scope.signatureFor = args[0]; // 계약서 보기일 때만 서명 이미지 로드
     }
     const { db, readOnly } = await loadSnapshot(client, scope);
