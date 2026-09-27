@@ -51,6 +51,10 @@
 
 화면마다 주소가 있어 휴대폰·브라우저의 **뒤로가기/앞으로가기/새로고침**이 사이트 안에서 동작하고, 주소를 공유할 수 있습니다.
 
+업체마다 **주소 코드**가 있어 `https://uffices.vercel.app/{업체코드}` 로 접속합니다 (예: 더좋은집 = `/thgood`).
+업체 코드는 운영자가 [업체/계정관리]에서 정하며, 아래 주소는 모두 업체 코드 뒤에 붙습니다 (예: `/thgood/contracts`).
+업체 주소에서는 **그 업체 계정만** 로그인할 수 있고, 운영자는 코드 없는 첫 주소(`/`)에서 로그인합니다.
+
 | 주소 | 화면 |
 |---|---|
 | `/contracts` · `/contracts/trash` | 계약 목록 · 휴지통 |
@@ -58,7 +62,8 @@
 | `/contracts/new` · `/contracts/new?from=12` | 계약 등록 · 같은 현장 시공 추가 |
 | `/customers` `/schedule` `/progress` `/stats` | 계약자관리 · 일정관리 · 진행상황 · 통계 |
 | `/settings/users` `/settings/engineers` `/settings/teams` `/settings/products` `/settings/apartments` `/settings/schedule` | 설정 |
-| `/me` · `/admin` | 내 정보 · 업체/계정관리(운영자) |
+| `/{업체코드}` | 업체 로그인 (업체 이름 표시) |
+| `/me` · `/admin` | 내 정보 · 업체/계정관리(운영자, 업체 코드 없음) |
 | `/engineer` · `/engineer/off` | 기사모바일 (내 일정 · 휴무 설정) |
 | `/sign/토큰` | 고객 전자서명 (로그인 불필요) |
 

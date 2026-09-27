@@ -80,7 +80,19 @@ export default function App() {
   if (legacy) return null;
 
   if (loading) return <div className="page-loading">불러오는 중...</div>;
-  if (!user) return <LoginPage />;
+  if (!user) return <LoginPage companyCode={route.base} />;
+  return <CompanyGate route={route} />;
+}
+
+// 로그인한 계정의 업체 주소(/thgood/...)로 맞춰서 보여줌. 운영자는 업체 코드 없는 주소(/admin)
+function CompanyGate({ route }) {
+  const { user, company } = useAuth();
+  const code = user.role === ROLES.SUPER ? '' : company?.code || '';
+  const wrongBase = route.base !== code;
+  useEffect(() => {
+    if (wrongBase) navigate(`${route.path}${window.location.search}`, { replace: true, base: code });
+  }, [wrongBase, code, route.path]);
+  if (wrongBase) return null;
   if (user.role === ROLES.ENGINEER) return <EngineerApp route={route} />;
   return <MainLayout route={route} />;
 }

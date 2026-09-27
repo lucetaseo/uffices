@@ -20,8 +20,8 @@ export function AuthProvider({ children }) {
     refresh();
   }, [refresh]);
 
-  const login = useCallback(async (loginId, password) => {
-    const { user, company } = await auth.login(loginId, password);
+  const login = useCallback(async (loginId, password, companyCode) => {
+    const { user, company } = await auth.login(loginId, password, companyCode);
     setState({ user, company, loading: false });
   }, []);
 
