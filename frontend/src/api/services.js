@@ -23,7 +23,7 @@ import {
 } from './runtime.js';
 import { ROLES, DATA_SCOPES, permissionsOf, isOwnScopeOnly, ALL_PERMISSION_KEYS } from '../auth/permissions.js';
 import { digitsOnly, formatPhone } from '../utils/format.js';
-import { CATEGORIES } from '../constants.js';
+import { CATEGORIES, DEPARTMENTS } from '../constants.js';
 import {
   ApiError,
   authorize,
@@ -229,6 +229,7 @@ async function buildUser(db, data) {
     permissions: data.role === ROLES.MANAGER ? data.permissions || [] : [],
     dataScope: data.dataScope || DATA_SCOPES.ALL,
     teamId: data.teamId ? Number(data.teamId) : null,
+    department: DEPARTMENTS.includes(data.department) ? data.department : '',
     position: data.position || '',
     active: true,
     createdBy: data.createdBy,
@@ -297,6 +298,7 @@ export const users = {
     if ('active' in patch) target.active = !!patch.active;
     if ('teamId' in patch) target.teamId = patch.teamId ? Number(patch.teamId) : null;
     if ('position' in patch) target.position = patch.position || '';
+    if ('department' in patch) target.department = DEPARTMENTS.includes(patch.department) ? patch.department : '';
     if (target.role === ROLES.MANAGER) {
       if ('permissions' in patch) target.permissions = sanitizePermissions(user, patch.permissions);
       if ('dataScope' in patch) target.dataScope = patch.dataScope === DATA_SCOPES.OWN ? DATA_SCOPES.OWN : DATA_SCOPES.ALL;
