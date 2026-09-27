@@ -63,6 +63,7 @@
 | `/customers` `/schedule` `/progress` `/stats` | 계약자관리 · 일정관리 · 진행상황 · 통계 |
 | `/settings/users` `/settings/engineers` `/settings/teams` `/settings/products` `/settings/apartments` `/settings/schedule` | 설정 |
 | `/{업체코드}` | 업체 로그인 (업체 이름 표시) |
+| `/settings/import` | 데이터 가져오기 (관리자: 기사 목록 · 예전 프로그램 계약 엑셀) |
 | `/me` · `/admin` | 내 정보 · 업체/계정관리(운영자, 업체 코드 없음) |
 | `/engineer` · `/engineer/off` | 기사모바일 (내 일정 · 휴무 설정) |
 | `/sign/토큰` | 고객 전자서명 (로그인 불필요) |

@@ -4,7 +4,7 @@
 // ============================================================
 
 import { loadDb, saveDb, nextId, publicBaseUrl, clientInfo } from './runtime.js';
-import { ApiError, authorize, clone, findContract, nowIso, visibleContracts } from './core.js';
+import { ApiError, authorize, clone, findContract, isLoginIdTaken, nowIso, visibleContracts } from './core.js';
 import { addHistory, assigneeOf, contractView } from './views.js';
 import { assertAssignable } from './schedule.js';
 import { invalidateNumbers } from './numbering.js';
@@ -26,6 +26,7 @@ import {
 import { inRange, isDateKey, isoToDateKey, today } from '../utils/date.js';
 import { digitsOnly, formatAddress, formatPhone, won } from '../utils/format.js';
 import { calcAmounts, firstScheduleDate } from '../utils/contract.js';
+import { categoriesFromName } from '../utils/legacyImport.js';
 
 // ------------------------------------------------------------
 // 검색
@@ -630,5 +631,135 @@ export const reports = {
       .filter((c) => !c.deletedAt)
       .filter((c) => matchesFilter(c, { dateType, startDate: from, endDate: to }))
       .map((c) => contractView(c, user, db));
+  },
+};
+
+// ============================================================
+// 기존 프로그램 데이터 가져오기 (관리자 전용)   설정 > 데이터 가져오기
+//   - 기사 목록: 이름/아이디/연락처 (비밀번호는 가져오지 않음 → 기사관리에서 설정)
+//   - 계약: 예전 번호(legacyNo)로 이미 가져온 건은 건너뜀 → 같은 파일을 다시 올려도 중복 없음
+//   화면에서 100건씩 나눠 보냅니다.
+// ============================================================
+
+const IMPORT_BATCH_MAX = 200;
+
+function authorizeImport(ctx) {
+  if (ctx.user.role !== 'ADMIN') throw new ApiError('데이터 가져오기는 업체 관리자만 할 수 있습니다.', 'FORBIDDEN');
+  return ctx;
+}
+
+function newEngineer(db, user, { name, loginId = '', phone = '', categories }) {
+  const cats = categories && categories.length ? categories : categoriesFromName(name);
+  const e = {
+    id: nextId(db, 'engineers'),
+    companyId: user.companyId,
+    name: String(name).trim(),
+    categories: cats,
+    category: cats.join('·') || '기타',
+    phone: phone ? formatPhone(phone) : '',
+    loginId,
+    passwordHash: null,
+    teamId: null,
+    email: '',
+    zipcode: '',
+    address: '',
+    addressDetail: '',
+    memo: '기존 프로그램에서 가져옴',
+    active: true,
+    createdAt: nowIso(),
+  };
+  db.engineers.push(e);
+  return e;
+}
+
+export const imports = {
+  async engineers(list = []) {
+    const { db, user } = authorizeImport(await authorize('settings.manage'));
+    const result = { created: 0, skipped: 0, errors: [] };
+    list.slice(0, IMPORT_BATCH_MAX).forEach((row) => {
+      const name = String(row.name || '').trim();
+      if (!name) return;
+      const mine = db.engineers.filter((e) => e.companyId === user.companyId);
+      if (mine.some((e) => e.name === name)) {
+        result.skipped += 1;
+        return;
+      }
+      let loginId = String(row.loginId || '').trim();
+      if (loginId && (!/^[a-zA-Z0-9_.-]{3,20}$/.test(loginId) || isLoginIdTaken(db, loginId))) {
+        result.errors.push({ name, message: `아이디 [${loginId}] 는 형식이 맞지 않거나 이미 사용 중이라 비워 두었습니다.` });
+        loginId = '';
+      }
+      newEngineer(db, user, { name, loginId, phone: digitsOnly(row.phone).length >= 10 ? row.phone : '', categories: row.categories });
+      result.created += 1;
+    });
+    saveDb(db);
+    return result;
+  },
+
+  async contracts(rows = []) {
+    const { db, user } = authorizeImport(await authorize('contract.create'));
+    const company = db.companies.find((c) => c.id === user.companyId);
+    const result = { created: 0, skipped: 0, errors: [], newEngineers: [], newBrands: [] };
+    const done = new Set(db.contracts.filter((c) => c.companyId === user.companyId && c.legacyNo).map((c) => String(c.legacyNo)));
+    const engineerFor = (name) => {
+      const n = String(name || '').trim();
+      if (!n) return null;
+      let e = db.engineers.find((x) => x.companyId === user.companyId && x.name === n);
+      if (!e) {
+        e = newEngineer(db, user, { name: n });
+        result.newEngineers.push(n);
+      }
+      return e.id;
+    };
+
+    rows.slice(0, IMPORT_BATCH_MAX).forEach((r) => {
+      const key = String(r.legacyNo || '').trim();
+      if (key && done.has(key)) {
+        result.skipped += 1;
+        return;
+      }
+      try {
+        const brands = company.brands?.length ? company.brands : [company.name];
+        let brand = String(r.brand || '').trim() || brands[0];
+        if (!brands.includes(brand)) {
+          company.brands = [...brands, brand];
+          result.newBrands.push(brand);
+        }
+        const schedules = (r.schedules || []).map((s) => ({ ...s, assignType: ASSIGN_TYPES.ENGINEER, engineerId: engineerFor(s.engineerName) }));
+        const input = { ...r, brand, schedules, ownerId: null };
+        // 예전 데이터에 할인+상품권이 총액보다 큰 경우: 총액을 실계약금 기준으로 맞춤
+        if ((Number(input.discount) || 0) + (Number(input.voucher) || 0) > (Number(input.totalAmount) || 0)) {
+          input.totalAmount = (Number(input.discount) || 0) + (Number(input.voucher) || 0);
+        }
+        const fields = normalizeContractInput(db, user, input, null);
+        const cust = upsertCustomerForContract(db, user, fields.customerName, fields.customerPhone, fields.customerPhone2);
+        const contract = {
+          totalAmount: 0,
+          discount: 0,
+          voucher: 0,
+          payments: [],
+          lineItems: [],
+          ...fields,
+          legacyNo: key || null,
+          id: nextId(db, 'contracts'),
+          companyId: user.companyId,
+          customerId: cust.id,
+          esign: { status: ESIGN_STATUS.NONE, token: null },
+          history: [],
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+          deletedAt: null,
+        };
+        addHistory(contract, user, `기존 프로그램에서 가져옴 (예전 번호 ${key || '-'})`);
+        db.contracts.push(contract);
+        if (key) done.add(key);
+        result.created += 1;
+      } catch (e) {
+        result.errors.push({ legacyNo: key, customerName: r.customerName || '', message: e.message });
+      }
+    });
+    invalidateNumbers(db);
+    saveDb(db);
+    return result;
   },
 };

@@ -112,6 +112,9 @@ export async function persistChanges(client, before, after, readOnly) {
       }),
     );
     const nextIds = new Set();
+    const ids = [];
+    const companyIds = [];
+    const datas = [];
     for (const original of after[key] || []) {
       const [row, sig] = isContracts ? splitSignature(original) : [original, null];
       nextIds.add(row.id);
@@ -124,16 +127,23 @@ export async function persistChanges(client, before, after, readOnly) {
       }
       const json = JSON.stringify(row);
       if (prev.get(row.id) === json) continue;
+      ids.push(row.id);
+      companyIds.push(key === 'companies' ? row.id : row.companyId ?? null);
+      datas.push(json);
+    }
+    // 바뀐 행을 표마다 한 번에 저장 (DB 가 멀어도 왕복 횟수가 적도록)
+    for (let i = 0; i < ids.length; i += 500) {
       await client.query(
-        `INSERT INTO ${table} (id, company_id, data, updated_at) VALUES ($1, $2, $3, now())
+        `INSERT INTO ${table} (id, company_id, data, updated_at)
+         SELECT id, company_id, data::jsonb, now() FROM unnest($1::bigint[], $2::bigint[], $3::text[]) AS t(id, company_id, data)
          ON CONFLICT (id) DO UPDATE SET company_id = EXCLUDED.company_id, data = EXCLUDED.data, updated_at = now()`,
-        [row.id, key === 'companies' ? row.id : row.companyId ?? null, json],
+        [ids.slice(i, i + 500), companyIds.slice(i, i + 500), datas.slice(i, i + 500)],
       );
     }
-    for (const id of prev.keys()) {
-      if (nextIds.has(id)) continue;
-      await client.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
-      if (isContracts) await client.query(`DELETE FROM contract_signatures WHERE contract_id = $1`, [id]);
+    const removed = [...prev.keys()].filter((id) => !nextIds.has(id));
+    if (removed.length) {
+      await client.query(`DELETE FROM ${table} WHERE id = ANY($1::bigint[])`, [removed]);
+      if (isContracts) await client.query(`DELETE FROM contract_signatures WHERE contract_id = ANY($1::bigint[])`, [removed]);
     }
   }
   if (JSON.stringify(before.seq) !== JSON.stringify(after.seq)) {
