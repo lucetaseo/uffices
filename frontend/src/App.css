@@ -2996,3 +2996,31 @@ a.btn-quick {
   font-size: 13px;
   line-height: 1.6;
 }
+
+/* 설정 등록 화면 (상품·아파트) */
+.radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.field-note {
+  color: #ea580c;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.master-form .label-col {
+  width: 180px;
+  text-align: center;
+}
+
+.master-form textarea.input-text.full {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input[type='date'],
+input[type='month'] {
+  cursor: pointer;
+}

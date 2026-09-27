@@ -179,7 +179,10 @@ export default function ContractEditor({ contractId, prefillFrom, engineers, onC
     if (!p) return;
     setForm((prev) => ({
       ...prev,
-      lineItems: [...prev.lineItems, { productId: p.id, name: p.name, detail: p.detail, qty: 1, unitPrice: p.price }],
+      lineItems: [
+        ...prev.lineItems,
+        { productId: p.id, name: p.name, detail: [p.detail, p.freeDetail && `[무료시공] ${p.freeDetail}`].filter(Boolean).join('\n'), qty: 1, unitPrice: p.price },
+      ],
     }));
   };
 

@@ -451,17 +451,21 @@ export const products = masterTable('products', {
     kind: d.kind || '패키지',
     category: d.category || '기타',
     detail: d.detail || '',
+    freeDetail: d.freeDetail || '', // 무료시공내역
     price: Math.max(0, Number(d.price) || 0),
     visible: d.visible !== false,
   }),
 });
 
 export const apartments = masterTable('apartments', {
-  normalize: (d) => ({
-    sido: d.sido || '',
-    sigungu: d.sigungu || '',
-    name: required(d.name, '아파트명을 입력해 주세요.'),
-  }),
+  normalize: (d, db, user) => {
+    const row = { sido: String(d.sido || '').trim(), sigungu: String(d.sigungu || '').trim(), name: required(d.name, '아파트명을 입력해 주세요.') };
+    const dup = db.apartments.find(
+      (a) => a.companyId === user.companyId && a.id !== d.id && a.name.trim() === row.name && (a.sido || '') === row.sido && (a.sigungu || '') === row.sigungu,
+    );
+    if (dup) throw new ApiError('같은 지역에 같은 이름의 아파트가 이미 등록되어 있습니다.');
+    return row;
+  },
 });
 
 // ============================================================
