@@ -16,6 +16,7 @@ import KakaoModal from './KakaoModal.jsx';
 import ContractViewModal from './ContractViewModal.jsx';
 import OffModal from './OffModal.jsx';
 import { backdrop } from '../utils/backdrop.js';
+import { navigateForward } from '../router.js';
 
 const CATEGORY_SHORT = { 청소: '청', 줄눈: '줄', 나노코팅: '나', 탄성: '탄', 새집증후군: '새', 기타: '기' };
 const short = (category) => (CATEGORY_SHORT[category] ? `${CATEGORY_SHORT[category]})` : '');
@@ -26,9 +27,11 @@ export default function ScheduleManagement() {
   const canEdit = can('schedule.edit');
   const settings = { ...DEFAULT_SCHEDULE_SETTINGS, ...(company?.scheduleSettings || {}) };
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [selectedDate, setSelectedDate] = useState(null);
+  // 계약 수정 화면에 갔다가 뒤로 오면 보던 달·날짜로 복원
+  const saved = window.history.state?.schedule;
+  const [year, setYear] = useState(saved?.year || now.getFullYear());
+  const [month, setMonth] = useState(saved?.month || now.getMonth() + 1);
+  const [selectedDate, setSelectedDate] = useState(saved?.selectedDate || null);
   const [items, setItems] = useState([]);
   const [offs, setOffs] = useState([]);
   const [engineers, setEngineers] = useState([]);
@@ -122,6 +125,21 @@ export default function ScheduleManagement() {
   const dayOffs = selectedDate && showOff ? offsByDate[selectedDate] || [] : [];
 
   // ---------- 일정 수정 ----------
+  // 계약 수정 권한이 있으면 해당 계약서 수정 화면으로 이동 (저장/취소 후 이 화면으로 돌아옴)
+  // 일정 수정 권한만 있으면 기존처럼 날짜·시간·배정만 바꾸는 창
+  const canEditContract = can('contract.edit');
+  const editSchedule = (row) => {
+    if (canEditContract) {
+      window.history.replaceState({ ...window.history.state, schedule: { year, month, selectedDate } }, '');
+      navigateForward(`/contracts/${row.contract.id}/edit`);
+      return;
+    }
+    setEditItem({
+      ...row,
+      engineerId: row.engineerId ? String(row.engineerId) : '',
+      teamId: row.teamId ? String(row.teamId) : '',
+    });
+  };
   const editOffOf = (engineerId) => offs.find((o) => String(o.engineerId) === String(engineerId) && o.date === editItem?.date);
   const [editOffs, setEditOffs] = useState([]); // 수정 중인 날짜가 다른 달일 수 있어 별도 조회
   useEffect(() => {
@@ -382,17 +400,12 @@ export default function ScheduleManagement() {
                                 💬
                               </button>
                             )}
-                            {canEdit && (
+                            {(canEditContract || canEdit) && (
                               <button
                                 type="button"
                                 className="btn-dark-action"
-                                onClick={() =>
-                                  setEditItem({
-                                    ...row,
-                                    engineerId: row.engineerId ? String(row.engineerId) : '',
-                                    teamId: row.teamId ? String(row.teamId) : '',
-                                  })
-                                }
+                                title={canEditContract ? '계약서 수정 화면으로 이동' : '일정 수정'}
+                                onClick={() => editSchedule(row)}
                               >
                                 수정
                               </button>
