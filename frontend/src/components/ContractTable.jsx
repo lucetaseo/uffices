@@ -1,5 +1,5 @@
 import React from 'react';
-import { calcAmounts, itemsSummary, timeLabel } from '../utils/contract.js';
+import { calcAmounts, itemsSummary, kindBreakdown, timeLabel } from '../utils/contract.js';
 import { formatAddress, won } from '../utils/format.js';
 import { ESIGN_STATUS } from '../constants.js';
 
@@ -25,7 +25,7 @@ const ESIGN_CLASS = {
 // onOpen 이 있으면 줄에 마우스를 올렸을 때 강조되고, 누르면 계약 상세로 이동
 export default function ContractTable({ contracts, selectedIds, onToggle, onToggleAll, showAmount, renderActions, onOpen }) {
   const allChecked = contracts.length > 0 && contracts.every((c) => selectedIds.has(c.id));
-  const colCount = showAmount ? 16 : 11;
+  const colCount = showAmount ? 13 : 11;
 
   return (
     <div className="contract-table-container">
@@ -46,11 +46,8 @@ export default function ContractTable({ contracts, selectedIds, onToggle, onTogg
             <th>아파트명</th>
             {showAmount && (
               <>
-                <th>시공총액</th>
-                <th>할인</th>
-                <th>실계약금</th>
-                <th>입금</th>
-                <th>잔액</th>
+                <th>계약금액</th>
+                <th>입금 / 잔액</th>
               </>
             )}
             <th>관리</th>
@@ -118,15 +115,23 @@ export default function ContractTable({ contracts, selectedIds, onToggle, onTogg
                 </td>
                 {showAmount && (
                   <>
-                    <td data-label="시공총액" className="text-right">{won(a.total)}</td>
-                    <td data-label="할인" className="text-left nowrap sub-text">
-                      할인 {won(a.discount)}
-                      <br />
-                      상품권 {won(a.voucher)}
+                    <td data-label="계약금액" className="text-right nowrap amount-cell">
+                      <div className="amount-main">{won(a.actual)}원</div>
+                      {(a.discount > 0 || a.voucher > 0) && (
+                        <div className="sub-text">
+                          총액 {won(a.total)}
+                          {a.discount > 0 && ` · 할인 ${won(a.discount)}`}
+                          {a.voucher > 0 && ` · 상품권 ${won(a.voucher)}`}
+                        </div>
+                      )}
+                      {a.canceled > 0 && <div className="text-red sub-text">취소</div>}
                     </td>
-                    <td data-label="실계약금" className="text-right">{won(a.actual)}</td>
-                    <td data-label="입금" className="text-right">{won(a.paid)}</td>
-                    <td data-label="잔액" className={`text-right ${a.balance > 0 ? 'text-red' : ''}`}>{won(a.balance)}</td>
+                    <td data-label="입금 / 잔액" className="text-right nowrap amount-cell">
+                      <div className="sub-text">입금 {won(a.paid)}{kindBreakdown(a.byKind, won) && ` (${kindBreakdown(a.byKind, won)})`}</div>
+                      <div className={`amount-main ${a.balance > 0 ? 'text-red' : 'text-done'}`}>
+                        {a.balance > 0 ? `잔액 ${won(a.balance)}원` : a.balance < 0 ? `초과입금 ${won(-a.balance)}원` : a.canceled > 0 ? '취소' : '완납'}
+                      </div>
+                    </td>
                   </>
                 )}
                 <td data-label="관리" className="action-cell" onClick={(e) => e.stopPropagation()}>

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { contracts as contractApi } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { BRANDS } from '../constants.js';
-import { calcAmounts, isRefund, timeLabel } from '../utils/contract.js';
+import { calcAmounts, isRefund, kindBreakdown, sumAmounts, timeLabel } from '../utils/contract.js';
 import { formatAddress, won } from '../utils/format.js';
 import KakaoModal from '../components/KakaoModal.jsx';
 import PaymentModal from '../components/PaymentModal.jsx';
@@ -204,9 +204,16 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
             <tr>
               <th>계약금액</th>
               <td colSpan={5}>
-                {won(a.actual)}원 (시공금액 : {won(a.total)}원, 할인금액 : {won(a.discount)}원, 상품권 : {won(a.voucher)}원) 매출취소총액 :{' '}
-                {won(a.canceled)}원, 실계약금 : {won(a.actual - a.canceled)}원, 입금 : {won(a.paid)}원, 환불 : {won(a.refund)}원, 남은금액 :{' '}
-                <strong>{won(a.balance)}원</strong>
+                <div className="amount-line">
+                  <span>실계약금 <b>{won(a.actual - a.canceled)}원</b></span>
+                  <span>입금 <b>{won(a.paid - a.refund)}원</b>{kindBreakdown(a.byKind, won) && <small> ({kindBreakdown(a.byKind, won)})</small>}</span>
+                  <span className={a.balance > 0 ? 'text-red' : 'text-done'}>남은 잔금 <b>{won(a.balance)}원</b></span>
+                </div>
+                <div className="sub-text">
+                  시공금액 {won(a.total)}원 · 할인 {won(a.discount)}원 · 상품권 {won(a.voucher)}원
+                  {a.canceled > 0 && ` · 매출취소 ${won(a.canceled)}원`}
+                  {a.refund > 0 && ` · 환불 ${won(a.refund)}원`}
+                </div>
               </td>
             </tr>
           )}
@@ -322,41 +329,88 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
     </>
   );
 
+  const sum = sumAmounts(list);
   const amountSection = showAmount && (
     <>
       <h3 className="form-section-title">&gt; 시공별 계약금액</h3>
+      <div className="amount-cards">
+        <div className="amount-card">
+          <span>총 계약금액</span>
+          <b>{won(sum.actual - sum.canceled)}원</b>
+          <small>{list.length}개 시공{sum.discount + sum.voucher > 0 ? ` · 할인 ${won(sum.discount + sum.voucher)}원` : ''}</small>
+        </div>
+        <div className="amount-card">
+          <span>입금</span>
+          <b>{won(sum.paid - sum.refund)}원</b>
+          <small>{kindBreakdown(sum.byKind, won) || '입금 없음'}{sum.refund > 0 ? ` · 환불 ${won(sum.refund)}` : ''}</small>
+        </div>
+        <div className={`amount-card ${sum.balance > 0 ? 'due' : 'done'}`}>
+          <span>남은 잔금</span>
+          <b>{won(sum.balance)}원</b>
+          <small>{sum.balance > 0 ? '시공 전·후 받을 금액' : '완납'}</small>
+        </div>
+      </div>
       <div className="table-responsive">
-        <table className="detail-table">
+        <table className="detail-table amount-table">
           <thead>
             <tr>
               <th>선택</th>
               <th>구분</th>
-              <th>계약금액</th>
-              <th>매출취소총액</th>
               <th>실계약금액</th>
-              <th>입금금액</th>
-              <th>환불금액</th>
-              <th>남은금액</th>
+              <th>계약금</th>
+              <th>중도금</th>
+              <th>잔금</th>
+              <th>입금 합계</th>
+              <th>남은 잔금</th>
             </tr>
           </thead>
           <tbody>
             {list.map((c) => {
               const x = calcAmounts(c);
               return (
-                <tr key={c.id} className="selectable-row" onClick={() => setPayTargetId(c.id)}>
+                <tr key={c.id} className={`selectable-row ${payTargetId === c.id ? 'selected' : ''}`} onClick={() => setPayTargetId(c.id)}>
                   <td>
                     <input type="radio" name="payTarget" checked={payTargetId === c.id} onChange={() => setPayTargetId(c.id)} />
                   </td>
-                  <td>{c.category}</td>
-                  <td>{won(x.actual)}원 (VAT 포함)</td>
-                  <td>{won(x.canceled)}원</td>
-                  <td>{won(x.actual - x.canceled)}원</td>
-                  <td>{won(x.paid)}원</td>
-                  <td>{won(x.refund)}원</td>
-                  <td className={x.balance > 0 ? 'text-red' : ''}>{won(x.balance)}원</td>
+                  <td>
+                    <b>{c.category}</b>
+                    {c.status === '취소' && <div className="text-red sub-text">취소</div>}
+                  </td>
+                  <td className="text-right">
+                    <b>{won(x.actual - x.canceled)}원</b>
+                    {(x.discount > 0 || x.voucher > 0 || x.canceled > 0) && (
+                      <div className="sub-text">
+                        시공금액 {won(x.total)}
+                        {x.discount > 0 && ` · 할인 ${won(x.discount)}`}
+                        {x.voucher > 0 && ` · 상품권 ${won(x.voucher)}`}
+                        {x.canceled > 0 && ` · 취소 ${won(x.canceled)}`}
+                      </div>
+                    )}
+                  </td>
+                  <td className="text-right">{x.byKind['계약금'] ? `${won(x.byKind['계약금'])}원` : '-'}</td>
+                  <td className="text-right">{x.byKind['중도금'] ? `${won(x.byKind['중도금'])}원` : '-'}</td>
+                  <td className="text-right">{x.byKind['잔금'] || x.byKind['추가금'] ? `${won((x.byKind['잔금'] || 0) + (x.byKind['추가금'] || 0))}원` : '-'}</td>
+                  <td className="text-right">
+                    {won(x.paid - x.refund)}원{x.refund > 0 && <div className="sub-text">환불 {won(x.refund)}</div>}
+                  </td>
+                  <td className={`text-right ${x.balance > 0 ? 'text-red' : 'text-done'}`}>
+                    <b>{x.balance > 0 ? `${won(x.balance)}원` : x.balance < 0 ? `초과 ${won(-x.balance)}원` : '완납'}</b>
+                  </td>
                 </tr>
               );
             })}
+            {list.length > 1 && (
+              <tr className="sum-row">
+                <td />
+                <td><b>합계</b></td>
+                <td className="text-right"><b>{won(sum.actual - sum.canceled)}원</b></td>
+                <td className="text-right">{won(sum.byKind['계약금'] || 0)}원</td>
+                <td className="text-right">{won(sum.byKind['중도금'] || 0)}원</td>
+                <td className="text-right">{won((sum.byKind['잔금'] || 0) + (sum.byKind['추가금'] || 0))}원</td>
+                <td className="text-right">{won(sum.paid - sum.refund)}원</td>
+                <td className={`text-right ${sum.balance > 0 ? 'text-red' : 'text-done'}`}><b>{won(sum.balance)}원</b></td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -17,6 +17,7 @@ export function calcAmounts(c) {
   let paid = 0;
   let refund = 0;
   const paidBy = {};
+  const byKind = {}; // 항목별 입금: 계약금 / 중도금 / 잔금 / 추가금
   payments.forEach((p) => {
     const amount = Number(p.amount) || 0;
     if (isRefund(p)) {
@@ -25,8 +26,9 @@ export function calcAmounts(c) {
     }
     paid += amount;
     paidBy[p.method] = (paidBy[p.method] || 0) + amount;
+    byKind[p.kind || '계약금'] = (byKind[p.kind || '계약금'] || 0) + amount;
   });
-  return { total, discount, voucher, actual, canceled, paid, refund, paidBy, balance: actual - canceled - (paid - refund) };
+  return { total, discount, voucher, actual, canceled, paid, refund, paidBy, byKind, balance: actual - canceled - (paid - refund) };
 }
 
 export function summarize(contracts) {
@@ -134,3 +136,24 @@ export const groupPrefill = (c) => ({
   taxInvoice: c.taxInvoice || '',
   cashReceipt: c.cashReceipt || '',
 });
+
+// 여러 시공의 금액 합계 (계약 상세의 금액 요약)
+export function sumAmounts(contracts) {
+  const keys = ['total', 'discount', 'voucher', 'actual', 'canceled', 'paid', 'refund', 'balance'];
+  const out = Object.fromEntries(keys.map((k) => [k, 0]));
+  out.byKind = {};
+  contracts.forEach((c) => {
+    const a = calcAmounts(c);
+    keys.forEach((k) => (out[k] += a[k]));
+    Object.entries(a.byKind).forEach(([k, v]) => (out.byKind[k] = (out.byKind[k] || 0) + v));
+  });
+  return out;
+}
+
+// "계약금 100,000 · 잔금 50,000" 형태 (금액 있는 항목만)
+export function kindBreakdown(byKind, fmt) {
+  return ['계약금', '중도금', '잔금', '추가금']
+    .filter((k) => byKind[k])
+    .map((k) => `${k} ${fmt(byKind[k])}`)
+    .join(' · ');
+}
