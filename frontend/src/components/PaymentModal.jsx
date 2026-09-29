@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { PAYMENT_KINDS, PAYMENT_METHODS, RECEIPT_TYPES } from '../constants.js';
 import { today } from '../utils/date.js';
 import { backdrop } from '../utils/backdrop.js';
+import { compressImage } from '../utils/image.js';
+import { contracts as contractApi } from '../api/index.js';
 
 // 입금 등록/수정 창 (계약 상세 > 입금등록)
 export default function PaymentModal({ contract, payment, onSave, onClose }) {
@@ -22,13 +24,38 @@ export default function PaymentModal({ contract, payment, onSave, onClose }) {
         },
   );
   const [saving, setSaving] = useState(false);
+  // 영수증 사진: receiptImage — 새로 고른 사진(data URL) / null(삭제) / undefined(그대로)
+  const [receiptImage, setReceiptImage] = useState(undefined);
+  const [preview, setPreview] = useState(null);
+  const hasSaved = !!payment?.hasReceipt && receiptImage === undefined;
   const set = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
+
+  const pickReceipt = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const data = await compressImage(file);
+      setReceiptImage(data);
+      setPreview(data);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+  const showSaved = async () => {
+    try {
+      const r = await contractApi.receipt(contract.id, payment.id);
+      setPreview(r.image);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await onSave(form);
+      await onSave({ ...form, receiptImage });
     } finally {
       setSaving(false);
     }
@@ -99,6 +126,35 @@ export default function PaymentModal({ contract, payment, onSave, onClose }) {
                   <select className="input-text" value={form.receipt} onChange={(e) => set('receipt', e.target.value)}>
                     {RECEIPT_TYPES.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
+                </td>
+              </tr>
+              <tr className={isCard ? 'receipt-row card' : 'receipt-row'}>
+                <td className="label-col">영수증 사진</td>
+                <td className="input-col">
+                  <div className="inline-fields">
+                    <label className="btn-file sm">
+                      📷 {receiptImage || hasSaved ? '사진 바꾸기' : '사진 첨부'}
+                      <input type="file" accept="image/*" onChange={pickReceipt} hidden />
+                    </label>
+                    {hasSaved && !preview && (
+                      <button type="button" className="btn-link" onClick={showSaved}>첨부된 사진 보기</button>
+                    )}
+                    {(receiptImage || hasSaved) && (
+                      <button
+                        type="button"
+                        className="btn-link text-red"
+                        onClick={() => {
+                          setReceiptImage(payment?.hasReceipt ? null : undefined);
+                          setPreview(null);
+                        }}
+                      >
+                        사진 삭제
+                      </button>
+                    )}
+                    {receiptImage === null && <span className="sub-text">저장하면 사진이 삭제됩니다.</span>}
+                  </div>
+                  {preview && <img className="receipt-preview" src={preview} alt="영수증 사진" />}
+                  <div className="sub-text">{isCard ? '카드 결제는 카드 영수증을 찍어 첨부해 두세요.' : '영수증·이체 확인 화면 등을 첨부할 수 있습니다.'}</div>
                 </td>
               </tr>
               <tr>

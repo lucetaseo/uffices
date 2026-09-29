@@ -2,11 +2,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { contracts as contractApi } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { BRANDS } from '../constants.js';
+
+const TALK_BRAND_ORDER = ['더스타트', '더좋은집'];
 import { calcAmounts, isRefund, kindBreakdown, sumAmounts, timeLabel } from '../utils/contract.js';
 import { formatAddress, won } from '../utils/format.js';
 import KakaoModal from '../components/KakaoModal.jsx';
 import PaymentModal from '../components/PaymentModal.jsx';
 import DiscountModal from '../components/DiscountModal.jsx';
+import { backdrop } from '../utils/backdrop.js';
 import ContractViewModal from '../components/ContractViewModal.jsx';
 
 const CIRCLED = ['①', '②', '③'];
@@ -27,12 +30,15 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
   const { company, can, handleError } = useAuth();
   const showAmount = can('contract.amount');
   const brands = company?.brands?.length ? company.brands : BRANDS;
+  // 알림톡 버튼: 왼쪽 계약완료 / 오른쪽 기사배정, 위 더스타트 / 아래 더좋은집 (신화홈케어 등 다른 브랜드는 제외)
+  const talkBrands = TALK_BRAND_ORDER.filter((b) => brands.includes(b)).length ? TALK_BRAND_ORDER.filter((b) => brands.includes(b)) : brands;
   const [tab, setTab] = useState('시공관리');
   const [data, setData] = useState(null);
   const [selectedId, setSelectedId] = useState(contractId);
   const [payTargetId, setPayTargetId] = useState(null);
   const [paymentModal, setPaymentModal] = useState(null); // { contract, payment? }
   const [discountTarget, setDiscountTarget] = useState(null);
+  const [receiptView, setReceiptView] = useState(null); // { image, title }
   const [kakao, setKakao] = useState(null); // { contract, template, brand }
   const [viewId, setViewId] = useState(null);
   const [noteText, setNoteText] = useState('');
@@ -96,6 +102,15 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
     await contractApi.setDiscount(discountTarget.id, form);
     setDiscountTarget(null);
     await load();
+  };
+
+  const openReceipt = async (contract, p) => {
+    try {
+      const r = await contractApi.receipt(contract.id, p.id);
+      setReceiptView({ image: r.image, title: `${p.date} ${contract.category} ${p.kind} ${won(p.amount)}원 (${p.method})` });
+    } catch (e) {
+      handleError(e);
+    }
   };
 
   const removePayment = (contract, p) => {
@@ -303,8 +318,8 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
                 {can('notify.send') && (
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className="talk-btn-grid">
-                      {['기사배정', '계약완료'].map((t) =>
-                        brands.map((b) => (
+                      {talkBrands.map((b) =>
+                        ['계약완료', '기사배정'].map((t) => (
                           <button key={t + b} type="button" className="btn-talk-sm" onClick={() => setKakao({ contract: c, template: t, brand: b })}>
                             💬 {t}({b})
                           </button>
@@ -480,7 +495,14 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
                 <td>{p.approvalNo}</td>
                 <td>{p.bankOrCard}</td>
                 <td>{p.cardLast4 ? `****-${p.cardLast4}` : ''}</td>
-                <td>{p.receipt === '미발행' ? '' : p.receipt}</td>
+                <td>
+                  {p.receipt === '미발행' ? '' : p.receipt}
+                  {p.hasReceipt && (
+                    <button type="button" className="btn-receipt" title="영수증 사진 보기" onClick={() => openReceipt(p.contract, p)}>
+                      📎 사진
+                    </button>
+                  )}
+                </td>
                 <td className="sub-text">
                   {p.memo}
                   {p.createdAt && <div>{new Date(p.createdAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
@@ -715,6 +737,21 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
         </>
       )}
 
+      {receiptView && (
+        <div className="modal-overlay" {...backdrop(() => setReceiptView(null))}>
+          <div className="customer-reg-modal receipt-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="modal-top-bar">
+              <h3>&gt; 영수증 사진 — {receiptView.title}</h3>
+              <button type="button" className="modal-close-x" onClick={() => setReceiptView(null)}>&times;</button>
+            </div>
+            <img className="receipt-full" src={receiptView.image} alt="영수증 사진" />
+            <div className="form-bottom-btns">
+              <a className="btn-dark-lg sm" href={receiptView.image} download="영수증.jpg">내려받기</a>
+              <button type="button" className="btn-dark-lg sm cancel" onClick={() => setReceiptView(null)}>닫기</button>
+            </div>
+          </div>
+        </div>
+      )}
       {discountTarget && <DiscountModal contract={discountTarget} onSave={saveDiscount} onClose={() => setDiscountTarget(null)} />}
       {paymentModal && (
         <PaymentModal contract={paymentModal.contract} payment={paymentModal.payment} onSave={savePayment} onClose={() => setPaymentModal(null)} />

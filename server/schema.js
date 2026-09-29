@@ -20,7 +20,7 @@ DO $$
 DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY['companies','users','engineers','engineer_offs','teams','products',
-                           'apartments','customers','contracts','notifications']
+                           'apartments','customers','contracts','notifications','payment_receipts']
   LOOP
     EXECUTE format('CREATE TABLE IF NOT EXISTS %I (
       id          bigint PRIMARY KEY,
@@ -44,6 +44,8 @@ ALTER TABLE contract_signatures ENABLE ROW LEVEL SECURITY;
 CREATE UNIQUE INDEX IF NOT EXISTS users_login_idx ON users ((data->>'loginId'));
 CREATE INDEX IF NOT EXISTS engineers_login_idx ON engineers ((data->>'loginId'));
 CREATE INDEX IF NOT EXISTS contracts_esign_token_idx ON contracts ((data->'esign'->>'token'));
+-- 입금 영수증 사진 (용량이 커서 계약별로 필요할 때만 읽음)
+CREATE INDEX IF NOT EXISTS payment_receipts_contract_idx ON payment_receipts ((data->>'contractId'));
 
 -- 브라우저에서 Supabase 로 직접 접근하지 못하도록 차단 (서버만 접근)
 ALTER TABLE meta ENABLE ROW LEVEL SECURITY;
@@ -51,7 +53,7 @@ DO $$
 DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY['companies','users','engineers','engineer_offs','teams','products',
-                           'apartments','customers','contracts','notifications']
+                           'apartments','customers','contracts','notifications','payment_receipts']
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
   END LOOP;
