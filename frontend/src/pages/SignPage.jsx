@@ -77,7 +77,10 @@ export default function SignPage({ token }) {
     }
     setSubmitting(true);
     try {
-      await esign.sign(token, { signerName, signature: canvasRef.current.toDataURL('image/png'), agreed });
+      const signature = canvasRef.current.toDataURL('image/png');
+      await esign.sign(token, { signerName, signature, agreed });
+      // 방금 한 서명과 '서명완료' 상태를 계약서에 바로 보여줌
+      setData((d) => ({ ...d, contract: { ...d.contract, esign: { ...d.contract.esign, status: '서명완료', signerName: signerName.trim(), signature, signedAt: new Date().toISOString() } } }));
       setDone(true);
     } catch (e) {
       alert(e.message);

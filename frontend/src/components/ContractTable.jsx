@@ -115,10 +115,10 @@ export default function ContractTable({ contracts, selectedIds, onToggle, onTogg
                 </td>
                 {showAmount && (
                   <>
-                    <td data-label="계약금액" className="text-right nowrap amount-cell">
-                      <div className="amount-main">{won(a.actual)}원</div>
+                    <td data-label="계약금액" className="text-right amount-cell">
+                      <div className="amount-main nowrap">{won(a.actual)}원</div>
                       {(a.discount > 0 || a.voucher > 0) && (
-                        <div className="sub-text">
+                        <div className="sub-text kind-break">
                           총액 {won(a.total)}
                           {a.discount > 0 && ` · 할인 ${won(a.discount)}`}
                           {a.voucher > 0 && ` · 상품권 ${won(a.voucher)}`}
@@ -126,8 +126,9 @@ export default function ContractTable({ contracts, selectedIds, onToggle, onTogg
                       )}
                       {a.canceled > 0 && <div className="text-red sub-text">취소</div>}
                     </td>
-                    <td data-label="입금 / 잔액" className="text-right nowrap amount-cell">
-                      <div className="sub-text">입금 {won(a.paid)}{kindBreakdown(a.byKind, won) && ` (${kindBreakdown(a.byKind, won)})`}</div>
+                    <td data-label="입금 / 잔액" className="text-right amount-cell">
+                      <div className="sub-text nowrap">입금 {won(a.paid)}</div>
+                      {kindBreakdown(a.byKind, won) && <div className="sub-text kind-break">{kindBreakdown(a.byKind, won)}</div>}
                       <div className={`amount-main ${a.balance > 0 ? 'text-red' : 'text-done'}`}>
                         {a.balance > 0 ? `잔액 ${won(a.balance)}원` : a.balance < 0 ? `초과입금 ${won(-a.balance)}원` : a.canceled > 0 ? '취소' : '완납'}
                       </div>

@@ -33,7 +33,8 @@ export default function ContractDocument({ contract, company, showAmount = true,
           <tr>
             <th>시공사</th>
             <td colSpan={3}>
-              {company?.name} (대표 {company?.ceo}, 사업자번호 {company?.bizNo})
+              {company?.name}
+              {[company?.ceo && `대표 ${company.ceo}`, company?.bizNo && `사업자번호 ${company.bizNo}`].filter(Boolean).join(', ').replace(/^(.+)$/, ' ($1)')}
               <br />
               <span className="sub-text">{company?.address}</span>
             </td>

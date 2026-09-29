@@ -7,7 +7,7 @@ import { loadDb, saveDb, nextId, publicBaseUrl, clientInfo } from './runtime.js'
 import { ApiError, authorize, clone, findContract, isLoginIdTaken, nowIso, visibleContracts } from './core.js';
 import { addHistory, assigneeOf, contractView } from './views.js';
 import { assertAssignable } from './schedule.js';
-import { invalidateNumbers } from './numbering.js';
+import { invalidateNumbers, numberOf } from './numbering.js';
 import { can } from '../auth/permissions.js';
 import {
   APPROVAL_STATUS,
@@ -625,7 +625,8 @@ export const esign = {
     if (!c) throw new ApiError('유효하지 않거나 만료된 서명 링크입니다.', 'NOT_FOUND');
     const company = db.companies.find((x) => x.id === c.companyId);
     const view = clone(c);
-    delete view.esign.signature;
+    view.no = numberOf(db, c);
+    if (view.esign.status !== ESIGN_STATUS.SIGNED) delete view.esign.signature; // 서명 완료 후에는 고객 본인 서명 표시
     delete view.history;
     delete view.memo; // 내부 메모는 고객에게 노출하지 않음
     delete view.happyCallMemo;
