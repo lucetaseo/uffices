@@ -94,6 +94,7 @@ const READ_ONLY = new Set([
   'engineerOffs.list',
   'engineerApp.mySchedules',
   'engineerApp.myOffs',
+  'contracts.receipt',
   'companies.publicInfo',
   'scheduleSettings.get',
 ]);
@@ -113,6 +114,9 @@ const LIGHT_TABLES = {
   'apartments.list': ['apartments'],
   'scheduleSettings.get': [],
 };
+
+// 입금 영수증 사진을 읽거나 바꾸는 요청 (첫 인자 = 계약 번호)
+const RECEIPT_CALLS = new Set(['contracts.receipt', 'contracts.addPayment', 'contracts.updatePayment', 'contracts.removePayment', 'contracts.update']);
 
 const STATUS = { UNAUTHORIZED: 401, FORBIDDEN: 403, NOT_FOUND: 404 };
 
@@ -178,6 +182,7 @@ export async function handleRpc({ body, headers }) {
       scope = who.isSuper ? { allCompanies: true } : { companyId: who.companyId };
       if (LIGHT_TABLES[name]) scope.tables = LIGHT_TABLES[name];
       if (name === 'contracts.get') scope.signatureFor = args[0]; // 계약서 보기일 때만 서명 이미지 로드
+      if (RECEIPT_CALLS.has(name)) scope.receiptsFor = args[0]; // 이 계약의 영수증 사진만 로드
     }
     const { db, readOnly } = await loadSnapshot(client, scope);
     const before = clone(db);

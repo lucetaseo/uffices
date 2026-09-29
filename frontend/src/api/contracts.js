@@ -232,8 +232,38 @@ function normalizePayment(p, id) {
     cardLast4: String(p.cardLast4 || '').replace(/\D/g, '').slice(-4),
     receipt: oneOf(p.receipt, RECEIPT_TYPES, RECEIPT_TYPES[0]),
     memo: String(p.memo || '').slice(0, 200),
+    hasReceipt: !!p.hasReceipt, // 영수증 사진 첨부 여부 (사진은 paymentReceipts 에 따로 저장)
     createdAt: p.createdAt || nowIso(),
   };
+}
+
+
+// ------------------------------------------------------------
+// 입금 영수증 사진 (카드 영수증 등) — 계약 데이터와 따로 저장
+// ------------------------------------------------------------
+const RECEIPT_MAX = 3 * 1024 * 1024; // 사진 1장 최대 약 3MB (화면에서 줄여서 올림)
+
+function checkReceiptImage(img) {
+  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(String(img))) throw new ApiError('영수증은 사진 파일(jpg, png)만 첨부할 수 있습니다.');
+  if (img.length > RECEIPT_MAX) throw new ApiError('영수증 사진이 너무 큽니다. 다시 찍거나 작은 사진으로 올려 주세요.');
+}
+
+// image: 문자열이면 저장/교체, null 이면 삭제, undefined 면 그대로
+function setReceipt(db, user, c, payment, image) {
+  if (image === undefined) return;
+  db.paymentReceipts = (db.paymentReceipts || []).filter((r) => !(r.contractId === c.id && r.paymentId === payment.id));
+  if (image) {
+    checkReceiptImage(image);
+    db.paymentReceipts.push({ id: nextId(db, 'paymentReceipts'), companyId: user.companyId, contractId: c.id, paymentId: payment.id, image, createdAt: nowIso() });
+  }
+  payment.hasReceipt = !!image;
+}
+
+// 계약의 입금 내역에서 사라진 입금의 사진 정리
+function cleanReceipts(db, c) {
+  if (!db.paymentReceipts) return;
+  const ids = new Set((c.payments || []).map((p) => p.id));
+  db.paymentReceipts = db.paymentReceipts.filter((r) => r.contractId !== c.id || ids.has(r.paymentId));
 }
 
 // 같은 계약 묶음: 같은 계약자 + 같은 현장(아파트/동/호)의 시공들
@@ -383,6 +413,7 @@ export const contracts = {
       c.customerId = upsertCustomerForContract(db, user, c.customerName, fields.customerPhone, fields.customerPhone2).id;
     }
     Object.assign(c, fields, { updatedAt: nowIso() });
+    if ('payments' in fields) cleanReceipts(db, c);
     const changes = diffContract(db, before, c);
     if (changes.length) addHistory(c, user, '계약 수정', changes);
     invalidateNumbers(db);
@@ -501,14 +532,25 @@ export const contracts = {
     return contractView(c, user, db);
   },
 
+  // 영수증 사진 보기
+  async receipt(id, paymentId) {
+    const { db, user } = await authorize('contract.view');
+    if (!can(user, 'contract.amount')) throw new ApiError('금액·입금 정보 권한이 없습니다.', 'FORBIDDEN');
+    const c = findContract(db, user, id);
+    const r = (db.paymentReceipts || []).find((x) => x.contractId === c.id && x.paymentId === Number(paymentId));
+    if (!r) throw new ApiError('첨부된 영수증 사진이 없습니다.', 'NOT_FOUND');
+    return { image: r.image, createdAt: r.createdAt };
+  },
+
   async addPayment(id, payment) {
     const { db, user } = await authorize('contract.edit');
     if (!can(user, 'contract.amount')) throw new ApiError('금액·입금 정보 권한이 없습니다.', 'FORBIDDEN');
     const c = findContract(db, user, id);
     if (c.deletedAt) throw new ApiError('휴지통에 있는 계약입니다.');
     c.payments = c.payments || [];
-    const p = normalizePayment(payment, Math.max(0, ...c.payments.map((x) => x.id)) + 1);
+    const p = normalizePayment({ ...payment, hasReceipt: false }, Math.max(0, ...c.payments.map((x) => x.id)) + 1);
     c.payments.push(p);
+    setReceipt(db, user, c, p, payment.receiptImage || undefined);
     addHistory(c, user, `${p.kind === '환불' ? '환불' : '입금'} 등록`, [{ label: p.kind, from: '-', to: `${won(p.amount)}원 (${p.method})` }]);
     c.updatedAt = nowIso();
     saveDb(db);
@@ -522,8 +564,9 @@ export const contracts = {
     const idx = (c.payments || []).findIndex((x) => x.id === Number(paymentId));
     if (idx < 0) throw new ApiError('입금 내역을 찾을 수 없습니다.', 'NOT_FOUND');
     const before = c.payments[idx];
-    const p = normalizePayment({ ...payment, createdAt: before.createdAt }, before.id);
+    const p = normalizePayment({ ...payment, createdAt: before.createdAt, hasReceipt: before.hasReceipt }, before.id);
     c.payments[idx] = p;
+    setReceipt(db, user, c, p, payment.receiptImage);
     addHistory(c, user, '입금 수정', [{ label: `${before.kind} ${before.date}`, from: `${won(before.amount)}원`, to: `${won(p.amount)}원` }]);
     c.updatedAt = nowIso();
     saveDb(db);
@@ -537,6 +580,7 @@ export const contracts = {
     const p = (c.payments || []).find((x) => x.id === Number(paymentId));
     if (!p) throw new ApiError('입금 내역을 찾을 수 없습니다.', 'NOT_FOUND');
     c.payments = c.payments.filter((x) => x !== p);
+    cleanReceipts(db, c);
     addHistory(c, user, '입금 삭제', [{ label: `${p.kind} ${p.date}`, from: `${won(p.amount)}원`, to: '삭제' }]);
     c.updatedAt = nowIso();
     saveDb(db);

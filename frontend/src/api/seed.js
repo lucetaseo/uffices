@@ -24,6 +24,7 @@ export const TABLES = [
   'customers',
   'contracts',
   'notifications',
+  'paymentReceipts', // 입금 영수증 사진 (계약과 분리 저장)
 ];
 
 export function emptyDb() {
@@ -63,6 +64,10 @@ export function migrate(db) {
       changed = true;
     }
   });
+  if (!db.paymentReceipts) {
+    db.paymentReceipts = [];
+    changed = true;
+  }
   db.users.forEach((u) => {
     if (u.teamId === undefined) {
       Object.assign(u, { teamId: null, position: '' });

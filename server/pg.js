@@ -12,10 +12,13 @@ const TABLE_MAP = {
   customers: 'customers',
   contracts: 'contracts',
   notifications: 'notifications',
+  paymentReceipts: 'payment_receipts',
 };
 export const TABLE_KEYS = Object.keys(TABLE_MAP);
 // 업체별로 나뉘는 테이블 (요청한 사람의 업체 데이터만 읽음)
-const COMPANY_SCOPED = ['engineerOffs', 'teams', 'products', 'apartments', 'customers', 'contracts', 'notifications'];
+const COMPANY_SCOPED = ['engineerOffs', 'teams', 'products', 'apartments', 'customers', 'contracts', 'notifications', 'paymentReceipts'];
+// 영수증 사진은 용량이 커서 기본으로 읽지 않음 (scope.receiptsFor 로 해당 계약 것만)
+const HEAVY = ['paymentReceipts'];
 
 let pool = null;
 
@@ -67,9 +70,16 @@ export async function loadSnapshot(client, scope) {
     db[key] = (await rows(client, `SELECT data FROM ${TABLE_MAP[key]} ORDER BY id`)).map(toObj);
   }
   // scope.tables: 이 요청에 필요한 업체 표만 (없으면 전부) — 트래픽 절약
-  const wanted = scope.tables || COMPANY_SCOPED;
+  const wanted = scope.tables || COMPANY_SCOPED.filter((k) => !HEAVY.includes(k));
   for (const key of COMPANY_SCOPED) {
-    if (scope.companyId && wanted.includes(key)) {
+    if (key === 'paymentReceipts' && scope.companyId && scope.receiptsFor) {
+      db[key] = (
+        await rows(client, `SELECT data FROM payment_receipts WHERE company_id = $1 AND data->>'contractId' = $2 ORDER BY id`, [
+          scope.companyId,
+          String(Number(scope.receiptsFor)),
+        ])
+      ).map(toObj);
+    } else if (scope.companyId && wanted.includes(key)) {
       db[key] = (await rows(client, `SELECT data FROM ${TABLE_MAP[key]} WHERE company_id = $1 ORDER BY id`, [scope.companyId])).map(toObj);
     } else {
       db[key] = [];

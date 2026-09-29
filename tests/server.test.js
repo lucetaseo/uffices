@@ -51,7 +51,7 @@ before(async () => {
   const c = new pg.Client({ connectionString: url });
   await c.connect();
   await c.query(`DROP TABLE IF EXISTS meta, companies, users, engineers, engineer_offs, teams, products,
-    apartments, customers, contracts, notifications, contract_signatures CASCADE`);
+    apartments, customers, contracts, notifications, contract_signatures, payment_receipts CASCADE`);
   await c.end();
 });
 
@@ -372,4 +372,22 @@ test('할인 적용: 금액·상품권·사유 저장, 변경이력, 총액 초�
   assert.equal((await admin('contracts', 'setDiscount', c.id, { discount: 2000000 })).status, 400, '총액보다 큰 할인 차단');
   const m = await manager('contracts', 'get', c.id);
   if (m.status === 200) assert.equal(m.result.discountReason, null, '금액 권한 없으면 사유도 숨김');
+});
+
+test('입금 영수증 사진: 첨부·보기·교체·삭제, 계약 목록에는 사진 없이 표시만', async () => {
+  const img = 'data:image/jpeg;base64,' + Buffer.from('fake-jpeg-bytes').toString('base64');
+  const c = await admin.ok('contracts', 'create', { ...base, customerName: '영수증고객', customerPhone: '010-7777-3434', totalAmount: 500000 });
+  let v = await admin.ok('contracts', 'addPayment', c.id, { date: '2026-09-29', kind: '잔금', method: '카드', amount: 200000, receiptImage: img });
+  const p = v.payments.at(-1);
+  assert.equal(p.hasReceipt, true);
+  assert.equal(p.receiptImage, undefined, '계약 데이터에는 사진을 넣지 않음');
+  assert.equal((await admin.ok('contracts', 'receipt', c.id, p.id)).image, img);
+  const list = await admin.ok('contracts', 'list', { keyword: '영수증고객' });
+  assert.ok(!JSON.stringify(list).includes('fake'), '목록 응답에 사진 없음');
+  v = await admin.ok('contracts', 'updatePayment', c.id, p.id, { ...p, amount: 210000 });
+  assert.equal(v.payments.at(-1).hasReceipt, true, '사진 그대로 두고 금액만 수정');
+  assert.equal((await admin('contracts', 'addPayment', c.id, { amount: 1000, receiptImage: 'data:text/html;base64,AAAA' })).status, 400, '사진 파일만 허용');
+  v = await admin.ok('contracts', 'updatePayment', c.id, p.id, { ...p, receiptImage: null });
+  assert.equal(v.payments.at(-1).hasReceipt, false);
+  assert.equal((await admin('contracts', 'receipt', c.id, p.id)).status, 404);
 });
