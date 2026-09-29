@@ -6,6 +6,7 @@ import { calcAmounts, isRefund, kindBreakdown, sumAmounts, timeLabel } from '../
 import { formatAddress, won } from '../utils/format.js';
 import KakaoModal from '../components/KakaoModal.jsx';
 import PaymentModal from '../components/PaymentModal.jsx';
+import DiscountModal from '../components/DiscountModal.jsx';
 import ContractViewModal from '../components/ContractViewModal.jsx';
 
 const CIRCLED = ['①', '②', '③'];
@@ -31,6 +32,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
   const [selectedId, setSelectedId] = useState(contractId);
   const [payTargetId, setPayTargetId] = useState(null);
   const [paymentModal, setPaymentModal] = useState(null); // { contract, payment? }
+  const [discountTarget, setDiscountTarget] = useState(null);
   const [kakao, setKakao] = useState(null); // { contract, template, brand }
   const [viewId, setViewId] = useState(null);
   const [noteText, setNoteText] = useState('');
@@ -87,6 +89,13 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
     } catch (e) {
       handleError(e);
     }
+  };
+
+  // 할인 적용: 오류는 창 안에 표시되도록 그대로 던짐
+  const saveDiscount = async (form) => {
+    await contractApi.setDiscount(discountTarget.id, form);
+    setDiscountTarget(null);
+    await load();
   };
 
   const removePayment = (contract, p) => {
@@ -211,6 +220,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
                 </div>
                 <div className="sub-text">
                   시공금액 {won(a.total)}원 · 할인 {won(a.discount)}원 · 상품권 {won(a.voucher)}원
+                  {selected.discountReason && ` (할인사유: ${selected.discountReason})`}
                   {a.canceled > 0 && ` · 매출취소 ${won(a.canceled)}원`}
                   {a.refund > 0 && ` · 환불 ${won(a.refund)}원`}
                 </div>
@@ -386,6 +396,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
                         {x.canceled > 0 && ` · 취소 ${won(x.canceled)}`}
                       </div>
                     )}
+                    {c.discountReason && <div className="sub-text discount-reason">할인사유: {c.discountReason}</div>}
                   </td>
                   <td className="text-right">{x.byKind['계약금'] ? `${won(x.byKind['계약금'])}원` : '-'}</td>
                   <td className="text-right">{x.byKind['중도금'] ? `${won(x.byKind['중도금'])}원` : '-'}</td>
@@ -423,7 +434,10 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
           >
             + 입금등록
           </button>
-          <span className="sub-text" style={{ marginLeft: 8 }}>위 표에서 입금할 시공을 선택하세요.</span>
+          <button type="button" className="btn-dark-lg sm discount-btn" onClick={() => setDiscountTarget(list.find((c) => c.id === payTargetId) || selected)}>
+            할인 적용
+          </button>
+          <span className="sub-text" style={{ marginLeft: 8 }}>위 표에서 입금·할인할 시공을 선택하세요.</span>
         </div>
       )}
 
@@ -701,6 +715,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
         </>
       )}
 
+      {discountTarget && <DiscountModal contract={discountTarget} onSave={saveDiscount} onClose={() => setDiscountTarget(null)} />}
       {paymentModal && (
         <PaymentModal contract={paymentModal.contract} payment={paymentModal.payment} onSave={savePayment} onClose={() => setPaymentModal(null)} />
       )}

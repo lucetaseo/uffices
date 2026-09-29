@@ -3145,3 +3145,25 @@ input[type='month'] {
 .contract-table td.action-cell button {
   white-space: nowrap;
 }
+
+/* 할인 적용 */
+.section-actions .discount-btn {
+  margin-left: 6px;
+  background: #7c3aed;
+}
+
+.discount-modal {
+  max-width: 640px;
+}
+
+.discount-reason {
+  color: #7c3aed;
+}
+
+.discount-percent {
+  width: auto;
+}
+
+.discount-reason-input {
+  min-width: 220px;
+}

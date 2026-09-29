@@ -361,3 +361,15 @@ test('트래픽 절약: 가벼운 요청은 필요한 표만 읽고, 다른 데�
   assert.ok(before > 0);
   assert.equal(after, before, '가벼운 요청 뒤에도 계약 데이터 그대로');
 });
+
+test('할인 적용: 금액·상품권·사유 저장, 변경이력, 총액 초과 차단, 실장(금액권한 없음) 사유 숨김', async () => {
+  const c = await admin.ok('contracts', 'create', { ...base, customerName: '할인고객', customerPhone: '010-7777-1212', totalAmount: 1000000 });
+  const d = await admin.ok('contracts', 'setDiscount', c.id, { discount: 100000, voucher: 50000, discountReason: '잔금 현금 할인' });
+  assert.equal(d.discount, 100000);
+  assert.equal(d.voucher, 50000);
+  assert.equal(d.discountReason, '잔금 현금 할인');
+  assert.equal(d.history.at(-1).action, '할인 적용');
+  assert.equal((await admin('contracts', 'setDiscount', c.id, { discount: 2000000 })).status, 400, '총액보다 큰 할인 차단');
+  const m = await manager('contracts', 'get', c.id);
+  if (m.status === 200) assert.equal(m.result.discountReason, null, '금액 권한 없으면 사유도 숨김');
+});
