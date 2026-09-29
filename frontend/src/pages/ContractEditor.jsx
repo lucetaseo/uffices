@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  apartments as apartmentApi,
   contracts as contractApi,
   customers as customerApi,
   engineerOffs as offApi,
@@ -10,6 +9,7 @@ import {
 } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import MoneyInput from '../components/MoneyInput.jsx';
+import AptSearchInput from '../components/AptSearchInput.jsx';
 import { ROLES } from '../auth/permissions.js';
 import {
   ISSUE_STATUS,
@@ -43,6 +43,9 @@ import ContractViewModal from '../components/ContractViewModal.jsx';
 const CIRCLED = ['①', '②', '③'];
 
 const emptySchedule = () => ({ date: '', time: '', ampm: '', assignType: ASSIGN_TYPES.ENGINEER, engineerId: '', teamId: '', memo: '' });
+
+// 기사의 담당시공에 이 구분이 들어 있는지 (예전 데이터는 category 글자로 판단)
+const doesCategory = (en, category) => (Array.isArray(en.categories) && en.categories.length ? en.categories.includes(category) : String(en.category || '').includes(category));
 
 function initialForm(contract, company, user) {
   if (contract) {
@@ -99,7 +102,8 @@ function initialForm(contract, company, user) {
 
 // 계약서 작성/수정 화면. contractId 가 없으면 신규.
 // prefillFrom: 이 계약과 같은 계약자·현장으로 새 시공을 추가할 때 원본 계약 id
-export default function ContractEditor({ contractId, prefillFrom, engineers, onClose }) {
+// prefillCategory: 계약 상세의 [+ 청소] 등으로 들어오면 그 구분으로 시작
+export default function ContractEditor({ contractId, prefillFrom, prefillCategory, engineers, onClose }) {
   const { user, company, can, handleError } = useAuth();
   const isEdit = !!contractId;
   const showAmount = can('contract.amount');
@@ -111,7 +115,11 @@ export default function ContractEditor({ contractId, prefillFrom, engineers, onC
   const [form, setForm] = useState(() => (isEdit || prefillFrom ? null : initialForm(null, company, user)));
   const [saving, setSaving] = useState(false);
   const [productList, setProductList] = useState([]);
-  const [aptList, setAptList] = useState([]);
+  const [allProducts, setAllProducts] = useState(false);
+  // 구분(줄눈·청소·탄성…)을 고르면 그 시공 상품만 (전체 상품 보기로 넓힐 수 있음)
+  const shownProducts = (form ? productList.filter((p) => allProducts || p.category === form.category) : []).sort(
+    (a, b) => (a.kind || '').localeCompare(b.kind || '') || a.id - b.id,
+  );
   const [crewTeams, setCrewTeams] = useState([]);
   const [staff, setStaff] = useState([]);
   const [offs, setOffs] = useState([]);
@@ -122,7 +130,7 @@ export default function ContractEditor({ contractId, prefillFrom, engineers, onC
     if (!isEdit && prefillFrom) {
       contractApi
         .get(prefillFrom)
-        .then((src) => setForm({ ...initialForm(null, company, user), ...groupPrefill(src) }))
+        .then((src) => setForm({ ...initialForm(null, company, user), ...groupPrefill(src), ...(CATEGORIES.includes(prefillCategory) ? { category: prefillCategory } : {}) }))
         .catch(() => setForm(initialForm(null, company, user)));
     }
     if (isEdit) {
@@ -138,7 +146,6 @@ export default function ContractEditor({ contractId, prefillFrom, engineers, onC
         });
     }
     productApi.list().then(setProductList).catch(() => {});
-    apartmentApi.list().then(setAptList).catch(() => {});
     teamApi.list().then((t) => setCrewTeams(t.filter((x) => x.kind === '시공팀'))).catch(() => {});
     if (user.role === ROLES.ADMIN) userApi.staffOptions().then(setStaff).catch(() => {});
   }, [contractId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -323,12 +330,7 @@ export default function ContractEditor({ contractId, prefillFrom, engineers, onC
             <tr>
               <td className="label-col">현장<span className="star">*</span></td>
               <td className="input-col inline-fields">
-                <input className="input-text addr-input" name="aptName" value={form.aptName} onChange={onField} placeholder="현장검색 (아파트명)" list="apt-options" autoComplete="off" required />
-                <datalist id="apt-options">
-                  {aptList.map((a) => (
-                    <option key={a.id} value={a.name}>{[a.sido, a.sigungu].filter(Boolean).join(' ')}</option>
-                  ))}
-                </datalist>
+                <AptSearchInput value={form.aptName} onChange={(v) => set('aptName', v)} required />
                 <input className="input-text" name="dong" value={form.dong} onChange={onField} style={{ width: 70 }} /> 동
                 <input className="input-text" name="ho" value={form.ho} onChange={onField} style={{ width: 70 }} /> 호
                 <span>타입</span>
@@ -473,15 +475,24 @@ export default function ContractEditor({ contractId, prefillFrom, engineers, onC
                           {s.engineerId && !engineers.some((en) => String(en.id) === String(s.engineerId)) && (
                             <option value={s.engineerId}>{s.engineerName || '기사'}(미사용)</option>
                           )}
-                          {engineers.map((en) => {
-                            const off = s.date ? offOf(en.id, s.date) : null;
-                            const dis = off && offBlocks(off.period, slot);
-                            return (
-                              <option key={en.id} value={en.id} disabled={dis && String(en.id) !== String(s.engineerId)}>
-                                {en.name}({en.category}){off ? ` — ${OFF_LABEL[off.period]}휴무` : ''}
-                              </option>
-                            );
-                          })}
+                          {[
+                            [`${form.category} 기사`, engineers.filter((en) => doesCategory(en, form.category))],
+                            ['다른 시공 기사', engineers.filter((en) => !doesCategory(en, form.category))],
+                          ]
+                            .filter(([, group]) => group.length)
+                            .map(([label, group]) => (
+                              <optgroup key={label} label={label}>
+                                {group.map((en) => {
+                                  const off = s.date ? offOf(en.id, s.date) : null;
+                                  const dis = off && offBlocks(off.period, slot);
+                                  return (
+                                    <option key={en.id} value={en.id} disabled={dis && String(en.id) !== String(s.engineerId)}>
+                                      {en.name}({en.category}){off ? ` — ${OFF_LABEL[off.period]}휴무` : ''}
+                                    </option>
+                                  );
+                                })}
+                              </optgroup>
+                            ))}
                         </select>
                       )}
                       <button type="button" className="btn-dark-sm" onClick={() => setStep(i, { engineerId: '', teamId: '' })}>초기화</button>
@@ -564,16 +575,20 @@ export default function ContractEditor({ contractId, prefillFrom, engineers, onC
                 {showAmount ? (
                   <>
                     <div className="inline-fields" style={{ marginBottom: 8 }}>
-                      <select className="input-text" value="" onChange={(e) => addProduct(e.target.value)}>
-                        <option value="">+ 상품 추가 ({form.category} 상품 우선)</option>
-                        {[...productList]
-                          .sort((a, b) => (a.category === form.category ? -1 : 0) - (b.category === form.category ? -1 : 0))
-                          .map((p) => (
-                            <option key={p.id} value={p.id}>
-                              [{p.category}/{p.kind}] {p.name} — {won(p.price)}원
-                            </option>
-                          ))}
+                      <select className="input-text product-select" value="" onChange={(e) => addProduct(e.target.value)}>
+                        <option value="">
+                          + {allProducts ? '상품 추가 (전체)' : `${form.category} 상품 추가`} ({shownProducts.length}개)
+                        </option>
+                        {shownProducts.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            [{allProducts ? `${p.category}/` : ''}{p.kind}] {p.name} — {won(p.price)}원
+                          </option>
+                        ))}
                       </select>
+                      <label className="radio-item">
+                        <input type="checkbox" checked={allProducts} onChange={(e) => setAllProducts(e.target.checked)} /> 전체 상품 보기
+                      </label>
+                      {!allProducts && !shownProducts.length && <span className="sub-text">등록된 {form.category} 상품이 없습니다 (설정 → 상품관리)</span>}
                       <button type="button" className="btn-dark-sm" onClick={() => set('lineItems', [...form.lineItems, { productId: null, name: '', detail: '', qty: 1, unitPrice: 0 }])}>
                         + 직접입력
                       </button>

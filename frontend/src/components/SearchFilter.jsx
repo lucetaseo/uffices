@@ -11,6 +11,7 @@ import {
   WORK_STATUS,
 } from '../constants.js';
 import { presetRange } from '../utils/date.js';
+import AptSearchInput from './AptSearchInput.jsx';
 
 export const EMPTY_FILTER = {
   dateType: 'contractDate',
@@ -125,7 +126,7 @@ export default function SearchFilter({ filter, onSearch, staff = [], engineers =
         </div>
 
         <div className="filter-row">
-          {input('aptName', '아파트명', 'input-search wide')}
+          <AptSearchInput value={draft.aptName} onChange={(v) => set('aptName', v)} className="input-search wide" placeholder="아파트명" />
           {input('dong', '동', 'input-search narrow')}
           {input('ho', '호', 'input-search narrow')}
           {input('customerName', '계약자명')}
