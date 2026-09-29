@@ -13,7 +13,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import * as services from '../frontend/src/api/services.js';
 import { setRuntimeAdapter } from '../frontend/src/api/runtime.js';
 import { ApiError } from '../frontend/src/api/core.js';
-import { getPool, loadSnapshot, persistChanges, resolveCompanyId, companyIdByEsignToken } from './pg.js';
+import { getPool, loadSnapshot, persistChanges, resolveCompanyId, contractByEsignToken } from './pg.js';
 import { hashPassword, verifyPassword } from './password.js';
 import { bootstrap } from './bootstrap.js';
 import { COOKIE_NAME, decodeSession, encodeSession, parseCookies, sessionCookie } from './session.js';
@@ -176,7 +176,9 @@ export async function handleRpc({ body, headers }) {
     // 필요한 업체 데이터 범위 결정
     let scope;
     if (service === 'esign') {
-      scope = { companyId: await companyIdByEsignToken(client, args[0]) };
+      const { companyId, contractId } = await contractByEsignToken(client, args[0]);
+      scope = { companyId };
+      if (name === 'esign.getByToken' && contractId) scope.signatureFor = contractId; // 서명 후 다시 열면 본인 서명 표시
     } else {
       const who = await resolveCompanyId(client, ctx.session);
       scope = who.isSuper ? { allCompanies: true } : { companyId: who.companyId };

@@ -21,6 +21,9 @@ import { useRefreshOnReturn } from '../utils/useRefreshOnReturn.js';
 
 const CATEGORY_SHORT = { 청소: '청', 줄눈: '줄', 나노코팅: '나', 탄성: '탄', 새집증후군: '새', 기타: '기' };
 const short = (category) => (CATEGORY_SHORT[category] ? `${CATEGORY_SHORT[category]})` : '');
+// 이름 앞에 이미 "줄)"·"탄,줄)" 같은 표시가 있으면 구분 표시를 또 붙이지 않음 ("줄)줄)공두환" 방지)
+const HAS_PREFIX = /^[가-힣,]+\)/;
+const withShort = (category, name) => (HAS_PREFIX.test(name || '') ? name : `${short(category)}${name}`);
 
 export default function ScheduleManagement() {
   const { company, can, handleError } = useAuth();
@@ -110,7 +113,7 @@ export default function ScheduleManagement() {
       const key = it.assigneeName
         ? it.assignType === 'team'
           ? it.teamName
-          : `${short(it.contract.category)}${it.assigneeName}`
+          : withShort(it.contract.category, it.assigneeName)
         : '미배정';
       counts[key] = (counts[key] || 0) + 1;
     });
@@ -292,8 +295,7 @@ export default function ScheduleManagement() {
                         {offList.map((o) => (
                           <div key={o.id} className="off-line">
                             <span className={`off-chip off-${o.period}`}>{OFF_LABEL[o.period]}</span>
-                            {short(o.engineerCategory)}
-                            {o.engineerName}
+                            {withShort(o.engineerCategory, o.engineerName)}
                           </div>
                         ))}
                       </div>

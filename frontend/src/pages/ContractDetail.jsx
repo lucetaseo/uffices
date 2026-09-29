@@ -300,7 +300,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
                     <div key={i}>{l.name}</div>
                   ))}
                 </td>
-                <td className="text-left pre-wrap">{c.items}</td>
+                <td className="text-left pre-wrap items-cell">{c.items}</td>
                 <td className="text-left nowrap">
                   {[0, 1, 2].map((i) => (
                     <div key={i}>
@@ -461,7 +461,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
 
       <h3 className="form-section-title">&gt; 입금</h3>
       <div className="table-responsive">
-        <table className="detail-table">
+        <table className="detail-table payment-table">
           <thead>
             <tr>
               <th>입금일</th>

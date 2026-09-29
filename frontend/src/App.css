@@ -3317,3 +3317,130 @@ input[type='month'] {
 .product-select {
   max-width: 480px;
 }
+
+/* ============================================================
+   계약 목록: PC 에서도 오른쪽 입금·관리 칸이 잘리지 않게 폭 줄이기
+   ============================================================ */
+@media screen and (min-width: 769px) {
+  .contract-table th,
+  .contract-table td {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .contract-table td {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .contract-table .apt-cell {
+    min-width: 200px;
+  }
+
+  .contract-table .apt-cell .ellipsis {
+    max-width: 240px;
+  }
+
+  .contract-table .kind-break {
+    white-space: normal;
+    min-width: 110px;
+    max-width: 150px;
+    margin-left: auto;
+  }
+
+  /* 관리 버튼: [계약서][수정] / [알림톡] 두 줄로 → 줄 높이 줄이기 */
+  .contract-table td.action-cell .row-actions {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .contract-table td.action-cell .row-actions > :only-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* 표 안 작은 버튼은 글자가 줄바꿈되지 않게 */
+.btn-outline-action,
+.btn-dark-action,
+.btn-receipt,
+.btn-kakao-talk {
+  white-space: nowrap;
+}
+
+/* ============================================================
+   태블릿 세로(769~1100px)
+   ============================================================ */
+@media screen and (min-width: 769px) and (max-width: 1100px) {
+  /* 계약 등록/수정: [항목명 | 입력칸] 두 칸씩 줄바꿈 (항목명이 한 글자씩 세로로 깨지지 않게) */
+  .contract-editor .form-grid-table,
+  .contract-editor .form-grid-table > tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .contract-editor .form-grid-table > tbody > tr {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    border-bottom: 1px solid #edf0f5;
+  }
+
+  .contract-editor .form-grid-table > tbody > tr > td {
+    display: block;
+    width: auto !important;
+    min-width: 0;
+  }
+
+  .contract-editor .form-grid-table .label-col {
+    display: flex !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    align-items: center;
+  }
+
+  .contract-editor .form-grid-table .label-col .assign-type {
+    flex-basis: 100%;
+    align-items: center;
+  }
+
+  /* 상세 화면 정보표: 한 줄에 [항목 | 값] 하나씩 (좁은 칸에 글자가 여러 줄로 꺾이지 않게) */
+  .info-grid,
+  .info-grid > tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .info-grid > tbody > tr {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+  }
+
+  .info-grid > tbody > tr > th,
+  .info-grid > tbody > tr > td {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: auto;
+    min-width: 0;
+  }
+
+  .info-grid > tbody > tr > th {
+    align-items: center;
+  }
+
+  /* 상세시공 표: 추가시공품목 칸이 너무 좁아지지 않게, 알림톡 버튼은 한 줄에 하나 */
+  .detail-table .items-cell {
+    min-width: 170px;
+  }
+
+  .talk-btn-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 입금 표: 날짜·금액은 한 줄로 (넘치면 표 안에서 옆으로 밀기) */
+  .payment-table td {
+    white-space: nowrap;
+  }
+}
