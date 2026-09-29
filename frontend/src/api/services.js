@@ -459,7 +459,7 @@ export const products = masterTable('products', {
   }),
 });
 
-export const apartments = masterTable('apartments', {
+const apartmentsBase = masterTable('apartments', {
   normalize: (d, db, user) => {
     const row = { sido: String(d.sido || '').trim(), sigungu: String(d.sigungu || '').trim(), name: required(d.name, '아파트명을 입력해 주세요.') };
     const dup = db.apartments.find(
@@ -469,6 +469,23 @@ export const apartments = masterTable('apartments', {
     return row;
   },
 });
+
+export const apartments = {
+  ...apartmentsBase,
+  // 계약에 적힌 현장 이름 중 아파트관리에 없는 것을 한 번에 등록 (지역은 나중에 지정)
+  async fromContracts() {
+    const { db, user } = await authorize('settings.manage');
+    const have = new Set(db.apartments.filter((a) => a.companyId === user.companyId).map((a) => a.name.replace(/\s+/g, '')));
+    const names = [...new Set(db.contracts.filter((c) => c.companyId === user.companyId && !c.deletedAt).map((c) => String(c.aptName || '').trim()))]
+      .filter((n) => n && !n.startsWith('(') && !have.has(n.replace(/\s+/g, '')))
+      .sort((a, b) => a.localeCompare(b, 'ko'));
+    names.forEach((name) => {
+      db.apartments.push({ id: nextId(db, 'apartments'), companyId: user.companyId, sido: '', sigungu: '', name, createdAt: nowIso() });
+    });
+    saveDb(db);
+    return { created: names.length };
+  },
+};
 
 // ============================================================
 // 계약자(고객)   GET/POST/PATCH/DELETE /api/customers

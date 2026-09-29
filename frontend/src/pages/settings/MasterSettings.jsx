@@ -8,6 +8,7 @@ import { backdrop } from '../../utils/backdrop.js';
 import { goBack, match, navigate, navigateForward } from '../../router.js';
 import { REGIONS, SIDO_LIST } from '../../utils/regions.js';
 import EngineerForm from './EngineerForm.jsx';
+import { resetAptCache } from '../../components/AptSearchInput.jsx';
 
 export const PRODUCT_KINDS = ['패키지', '추가시공품목', '무료시공'];
 
@@ -22,7 +23,8 @@ const PAGE_SIZE = 20;
 //   onAdd/onEdit: 주면 팝업 대신 별도 화면으로 이동 (기사관리)
 //   pagePath: 주면 등록/수정을 별도 화면(pagePath/new, pagePath/번호)으로 (상품·아파트)
 //   fields type 추가: radio(options), custom(render(form, setField, rows)), textarea(rows), checkbox(note)
-function MasterPage({ title, notices, api, columns, fields, filters = [], searchKeys, emptyForm, removeConfirm, onAdd, onEdit, pagePath, path = '', formTitle }) {
+//   extraActions(reload): 목록 위에 추가 버튼, onChanged: 저장/삭제 후 호출
+function MasterPage({ title, notices, api, columns, fields, filters = [], searchKeys, emptyForm, removeConfirm, onAdd, onEdit, pagePath, path = '', formTitle, extraActions, onChanged }) {
   const { handleError } = useAuth();
   const [rows, setRows] = useState([]);
   const [query, setQuery] = useState('');
@@ -39,6 +41,7 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
         .then((r) => {
           setRows(r);
           setLoaded(true);
+          onChanged?.();
         })
         .catch(handleError),
     [api, handleError],
@@ -230,6 +233,7 @@ function MasterPage({ title, notices, api, columns, fields, filters = [], search
         <button type="button" className="btn-add-customer" onClick={openAdd}>
           + 등록하기
         </button>
+        {extraActions?.(load)}
         <span className="sub-text" style={{ marginLeft: 'auto', alignSelf: 'center' }}>총 {filtered.length}건</span>
       </div>
 
@@ -439,7 +443,28 @@ export function ApartmentSettings({ path = '' }) {
       formTitle="아파트"
       pagePath="/settings/apartments"
       path={path}
-      notices={['계약 등록 시 사용되는 아파트 기초코드입니다. 계약서 등록 시 아파트명 자동완성에 사용됩니다.']}
+      notices={[
+        '계약 등록 시 사용되는 아파트 기초코드입니다. 계약서 작성·계약 검색의 현장 칸에 글자 일부만 쳐도 여기 등록된 아파트가 추천됩니다.',
+        '[계약에서 불러오기]를 누르면 지금까지 계약에 적힌 현장 이름 중 아직 없는 것을 한 번에 등록합니다. (지역은 나중에 수정)',
+      ]}
+      onChanged={resetAptCache}
+      extraActions={(reload) => (
+        <button
+          type="button"
+          className="btn-add-customer outline"
+          onClick={async () => {
+            try {
+              const r = await apartments.fromContracts();
+              alert(r.created ? `계약에 적힌 현장 ${r.created}곳을 아파트 목록에 등록했습니다.` : '새로 등록할 현장이 없습니다. (이미 모두 등록됨)');
+              reload();
+            } catch (e) {
+              alert(e.message);
+            }
+          }}
+        >
+          계약에서 불러오기
+        </button>
+      )}
       api={apartments}
       searchKeys={['name', 'sido', 'sigungu']}
       filters={[{ key: 'sido', placeholder: '시/도', options: SIDO_LIST }]}

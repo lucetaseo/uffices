@@ -44,7 +44,8 @@ export default function ContractPage({ route }) {
   if (path === '/contracts/new') {
     if (!can('contract.create')) return <NoPermission />;
     const from = query.get('from');
-    return <ContractEditor key={`new-${from || ''}`} contractId={null} prefillFrom={from} engineers={engineers} onClose={closeEditor} />;
+    const category = query.get('category') || '';
+    return <ContractEditor key={`new-${from || ''}-${category}`} contractId={null} prefillFrom={from} prefillCategory={category} engineers={engineers} onClose={closeEditor} />;
   }
   const edit = match('/contracts/:id/edit', path);
   if (edit) {
@@ -59,7 +60,7 @@ export default function ContractPage({ route }) {
         contractId={Number(detail.id)}
         onBack={() => goBack('/contracts')}
         onEdit={(c) => navigateForward(`/contracts/${c.id}/edit`)}
-        onNewWork={(c) => navigateForward(`/contracts/new?from=${c.id}`)}
+        onNewWork={(c, category) => navigateForward(`/contracts/new?from=${c.id}${category ? `&category=${encodeURIComponent(category)}` : ''}`)}
         onOpenGroup={(id) => navigateForward(`/contracts/${id}`)}
       />
     );

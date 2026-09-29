@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { contracts as contractApi } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { BRANDS } from '../constants.js';
+import { BRANDS, CATEGORIES } from '../constants.js';
 
 const TALK_BRAND_ORDER = ['더스타트', '더좋은집'];
 import { calcAmounts, isRefund, kindBreakdown, sumAmounts, timeLabel } from '../utils/contract.js';
@@ -346,9 +346,12 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
       </div>
       {can('contract.create') && (
         <div className="section-actions">
-          <button type="button" className="btn-dark-lg sm" onClick={() => onNewWork(head)}>
-            + 시공등록
-          </button>
+          <span className="add-work-label">시공등록</span>
+          {CATEGORIES.filter((c) => c !== '기타').map((cat) => (
+            <button key={cat} type="button" className="btn-dark-lg sm add-work-btn" onClick={() => onNewWork(head, cat)}>
+              + {cat}
+            </button>
+          ))}
         </div>
       )}
     </>
