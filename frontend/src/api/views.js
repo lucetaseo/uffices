@@ -27,6 +27,7 @@ export function contractView(c, user, db) {
     out.totalAmount = null;
     out.discount = null;
     out.voucher = null;
+    out.discountReason = null;
     out.payments = [];
     out.lineItems = (out.lineItems || []).map(({ unitPrice, ...rest }) => rest);
     out.amountHidden = true;

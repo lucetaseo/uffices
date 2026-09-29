@@ -90,6 +90,7 @@ function initialForm(contract, company, user) {
     totalAmount: '',
     discount: '',
     voucher: '',
+    discountReason: '',
     payments: [],
     happyCallMemo: '',
   };
@@ -637,6 +638,18 @@ export default function ContractEditor({ contractId, prefillFrom, engineers, onC
                     <label className="inline-label">
                       할인 <input type="number" min="0" name="discount" value={form.discount} onChange={onField} className="input-text money" />
                     </label>
+                    <select
+                      className="input-text discount-percent"
+                      value=""
+                      title="시공총액의 % 로 할인 금액 계산"
+                      onChange={(e) => {
+                        const pct = Number(e.target.value);
+                        if (pct) set('discount', String(Math.round((amounts.total * pct) / 100 / 10) * 10));
+                      }}
+                    >
+                      <option value="">% 계산</option>
+                      {[3, 5, 7, 10, 15, 20, 30].map((p) => <option key={p} value={p}>{p}%</option>)}
+                    </select>
                     <label className="inline-label">
                       상품권 <input type="number" min="0" name="voucher" value={form.voucher} onChange={onField} className="input-text money" />
                     </label>
@@ -644,6 +657,7 @@ export default function ContractEditor({ contractId, prefillFrom, engineers, onC
                       실계약금 <strong>{won(amounts.actual)}</strong>원
                     </span>
                     {form.lineItems.length > 0 && <span className="sub-text">(상품내역이 있으면 시공총액은 자동 합계)</span>}
+                    <input className="input-text discount-reason-input" name="discountReason" value={form.discountReason || ''} onChange={onField} placeholder="할인 사유 (예: 박람회 현장 할인)" maxLength={100} />
                   </td>
                 </tr>
                 <tr>

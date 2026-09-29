@@ -201,6 +201,7 @@ function normalizeContractInput(db, user, data, existing) {
       : Math.max(0, Number(data.totalAmount) || 0);
     out.discount = Math.max(0, Number(data.discount) || 0);
     out.voucher = Math.max(0, Number(data.voucher) || 0);
+    out.discountReason = String(data.discountReason || '').trim().slice(0, 100);
     if (out.discount + out.voucher > out.totalAmount) throw new ApiError('할인/상품권 금액이 시공총액보다 큽니다.');
     const input = (data.payments || []).filter((p) => Number(p.amount));
     let nextPid = Math.max(0, ...input.map((p) => Number(p.id) || 0));
@@ -273,6 +274,7 @@ function diffContract(db, before, after) {
     push('시공총액', won(a.total), won(b.total));
     push('할인', won(a.discount), won(b.discount));
     push('상품권', won(a.voucher), won(b.voucher));
+    push('할인사유', before.discountReason, after.discountReason);
     push('입금합계', won(a.paid), won(b.paid));
     push('환불합계', won(a.refund), won(b.refund));
   }
@@ -474,6 +476,31 @@ export const contracts = {
   },
 
   // ---------------- 입금 (계약 상세의 입금등록) ----------------
+  // 계약 상세에서 할인·상품권만 바로 적용 (예: 잔금 받을 때 할인) — 변경이력 기록
+  async setDiscount(id, { discount, voucher, discountReason } = {}) {
+    const { db, user } = await authorize('contract.edit');
+    if (!can(user, 'contract.amount')) throw new ApiError('금액·입금 정보 권한이 없습니다.', 'FORBIDDEN');
+    const c = findContract(db, user, id);
+    if (c.deletedAt) throw new ApiError('휴지통에 있는 계약입니다.');
+    const d = Math.round(Number(discount) || 0);
+    const v = Math.round(Number(voucher) || 0);
+    if (d < 0 || v < 0) throw new ApiError('할인 금액을 올바르게 입력해 주세요.');
+    if (d + v > (Number(c.totalAmount) || 0)) throw new ApiError('할인/상품권 금액이 시공총액보다 큽니다.');
+    const before = clone(c);
+    c.discount = d;
+    c.voucher = v;
+    c.discountReason = String(discountReason || '').trim().slice(0, 100);
+    // 서명완료된 계약의 금액이 바뀌면 재서명 필요
+    if (c.esign?.status === ESIGN_STATUS.SIGNED && (before.discount !== d || before.voucher !== v)) {
+      c.esign = { ...c.esign, status: ESIGN_STATUS.NONE, token: null, previousSignedAt: c.esign.signedAt };
+    }
+    const changes = diffContract(db, before, c);
+    if (changes.length) addHistory(c, user, '할인 적용', changes);
+    c.updatedAt = nowIso();
+    saveDb(db);
+    return contractView(c, user, db);
+  },
+
   async addPayment(id, payment) {
     const { db, user } = await authorize('contract.edit');
     if (!can(user, 'contract.amount')) throw new ApiError('금액·입금 정보 권한이 없습니다.', 'FORBIDDEN');
