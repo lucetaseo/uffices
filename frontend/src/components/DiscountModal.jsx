@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import { backdrop } from '../utils/backdrop.js';
 import { won } from '../utils/format.js';
+import MoneyInput from './MoneyInput.jsx';
 
 // 할인 적용 창 (계약 상세 > 시공별 계약금액 > 할인 적용)
-//  금액으로 넣거나, 시공금액의 %로 계산해서 넣을 수 있음
+//  할인은 금액으로 직접 입력 (예: 10000 → 10,000원)
 export default function DiscountModal({ contract, onSave, onClose }) {
   const total = Number(contract.totalAmount) || 0;
-  const [mode, setMode] = useState('amount'); // amount | percent
   const [discount, setDiscount] = useState(String(contract.discount || ''));
-  const [percent, setPercent] = useState('');
   const [voucher, setVoucher] = useState(String(contract.voucher || ''));
   const [reason, setReason] = useState(contract.discountReason || '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const discountValue = mode === 'percent' ? Math.round((total * (Number(percent) || 0)) / 100 / 10) * 10 : Number(discount) || 0;
+  const discountValue = Number(discount) || 0;
   const voucherValue = Number(voucher) || 0;
   const actual = total - discountValue - voucherValue;
 
@@ -48,23 +47,14 @@ export default function DiscountModal({ contract, onSave, onClose }) {
               </tr>
               <tr>
                 <td className="label-col">할인</td>
-                <td className="input-col inline-fields">
-                  <label className="radio-item"><input type="radio" checked={mode === 'amount'} onChange={() => setMode('amount')} /> 금액</label>
-                  <label className="radio-item"><input type="radio" checked={mode === 'percent'} onChange={() => setMode('percent')} /> %</label>
-                  {mode === 'amount' ? (
-                    <input type="number" min="0" className="input-text money" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="할인 금액" autoFocus />
-                  ) : (
-                    <>
-                      <input type="number" min="0" max="100" step="0.5" className="input-text" style={{ width: 90 }} value={percent} onChange={(e) => setPercent(e.target.value)} placeholder="%" autoFocus />
-                      <span className="sub-text">= {won(discountValue)}원 (10원 단위)</span>
-                    </>
-                  )}
+                <td className="input-col">
+                  <MoneyInput value={discount} onChange={setDiscount} placeholder="할인 금액 (예: 10000)" autoFocus />
                 </td>
               </tr>
               <tr>
                 <td className="label-col">상품권</td>
                 <td className="input-col">
-                  <input type="number" min="0" className="input-text money" value={voucher} onChange={(e) => setVoucher(e.target.value)} placeholder="상품권 금액" />
+                  <MoneyInput value={voucher} onChange={setVoucher} placeholder="상품권 금액" />
                 </td>
               </tr>
               <tr>

@@ -9,6 +9,7 @@ import {
   users as userApi,
 } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import MoneyInput from '../components/MoneyInput.jsx';
 import { ROLES } from '../auth/permissions.js';
 import {
   ISSUE_STATUS,
@@ -632,26 +633,14 @@ export default function ContractEditor({ contractId, prefillFrom, engineers, onC
                       {form.lineItems.length ? (
                         <strong>{won(amounts.total)}원</strong>
                       ) : (
-                        <input type="number" min="0" name="totalAmount" value={form.totalAmount} onChange={onField} className="input-text money" />
+                        <MoneyInput value={form.totalAmount} onChange={(v) => set('totalAmount', v)} />
                       )}
                     </label>
                     <label className="inline-label">
-                      할인 <input type="number" min="0" name="discount" value={form.discount} onChange={onField} className="input-text money" />
+                      할인 <MoneyInput value={form.discount} onChange={(v) => set('discount', v)} placeholder="예: 10000" />
                     </label>
-                    <select
-                      className="input-text discount-percent"
-                      value=""
-                      title="시공총액의 % 로 할인 금액 계산"
-                      onChange={(e) => {
-                        const pct = Number(e.target.value);
-                        if (pct) set('discount', String(Math.round((amounts.total * pct) / 100 / 10) * 10));
-                      }}
-                    >
-                      <option value="">% 계산</option>
-                      {[3, 5, 7, 10, 15, 20, 30].map((p) => <option key={p} value={p}>{p}%</option>)}
-                    </select>
                     <label className="inline-label">
-                      상품권 <input type="number" min="0" name="voucher" value={form.voucher} onChange={onField} className="input-text money" />
+                      상품권 <MoneyInput value={form.voucher} onChange={(v) => set('voucher', v)} />
                     </label>
                     <span className="calc-result">
                       실계약금 <strong>{won(amounts.actual)}</strong>원

@@ -3167,3 +3167,19 @@ input[type='month'] {
 .discount-reason-input {
   min-width: 220px;
 }
+
+/* 금액 입력칸 (쉼표 자동) */
+.money-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.money-input .input-text {
+  text-align: right;
+}
+
+.money-unit {
+  font-size: 13px;
+  color: #475569;
+}
