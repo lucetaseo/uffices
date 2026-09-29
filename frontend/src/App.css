@@ -3024,3 +3024,124 @@ input[type='date'],
 input[type='month'] {
   cursor: pointer;
 }
+
+/* ==========================================
+   14. 금액 보기 (계약 목록·상세) + 태블릿
+   ========================================== */
+.text-done {
+  color: #15803d;
+}
+
+.amount-cell .amount-main {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.amount-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  font-size: 14px;
+}
+
+.amount-line small {
+  color: #64748b;
+}
+
+.amount-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+
+.amount-card {
+  border: 1px solid #dce1e8;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.amount-card span {
+  font-size: 13px;
+  color: #475569;
+}
+
+.amount-card b {
+  font-size: 20px;
+  color: #0f172a;
+}
+
+.amount-card small {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.amount-card.due {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.amount-card.due b {
+  color: #dc2626;
+}
+
+.amount-card.done {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.amount-card.done b {
+  color: #15803d;
+}
+
+.amount-table td {
+  vertical-align: middle;
+}
+
+.amount-table tr.selected td {
+  background: #eef4ff;
+}
+
+.amount-table tr.sum-row td {
+  background: #f1f5f9;
+  border-top: 2px solid #cbd5e1;
+}
+
+/* 태블릿(769~1280px): 계약 목록 표는 칸 안에서 가로 스크롤 (금액·관리 칸이 잘리지 않게) */
+@media screen and (min-width: 769px) and (max-width: 1280px) {
+  .contract-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .contract-table {
+    min-width: 1100px;
+  }
+
+  .content {
+    padding: 12px;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .amount-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .amount-card b {
+    font-size: 18px;
+  }
+}
+
+/* 계약 목록 관리 버튼: 글자가 세로로 쪼개지지 않게 */
+.contract-table td.action-cell {
+  min-width: 96px;
+}
+
+.contract-table td.action-cell button {
+  white-space: nowrap;
+}
