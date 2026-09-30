@@ -55,6 +55,10 @@ const rows = async (client, sql, params = []) => (await client.query(sql, params
 //   scope.allCompanies: 운영자 — 업체별 계약 건수만 필요 → 계약은 요약만 로드 (저장 안 함)
 //   scope.tables: 읽을 업체 표 목록 (가벼운 요청은 계약 등 큰 표를 읽지 않음)
 //   scope.signatureFor: 이 계약의 서명 이미지도 함께 로드 (계약서 보기)
+//   scope.slimContracts: 계약의 긴 글·변경이력은 빼고 로드 (목록·통계 — 읽기 전용 요청만)
+// scope.slimContracts 일 때 계약에서 빼고 읽을 항목 (목록용 — 읽기 전용 요청에만 사용)
+const SLIM_DROP = ['history', 'memo', 'happyCallMemo', 'notes', 'engineerNote'].map((k) => `- '${k}'`).join(' ');
+
 export async function loadSnapshot(client, scope) {
   const db = { seq: {}, version: 2 };
   const readOnly = new Set();
@@ -80,7 +84,9 @@ export async function loadSnapshot(client, scope) {
         ])
       ).map(toObj);
     } else if (scope.companyId && wanted.includes(key)) {
-      db[key] = (await rows(client, `SELECT data FROM ${TABLE_MAP[key]} WHERE company_id = $1 ORDER BY id`, [scope.companyId])).map(toObj);
+      // 목록 요청(읽기 전용)은 계약의 긴 글·변경이력을 DB 에서 아예 읽지 않음
+      const cols = key === 'contracts' && scope.slimContracts ? `data ${SLIM_DROP}` : 'data';
+      db[key] = (await rows(client, `SELECT ${cols} AS data FROM ${TABLE_MAP[key]} WHERE company_id = $1 ORDER BY id`, [scope.companyId])).map(toObj);
     } else {
       db[key] = [];
       readOnly.add(key);

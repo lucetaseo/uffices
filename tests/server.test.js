@@ -391,3 +391,33 @@ test('입금 영수증 사진: 첨부·보기·교체·삭제, 계약 목록에�
   assert.equal(v.payments.at(-1).hasReceipt, false);
   assert.equal((await admin('contracts', 'receipt', c.id, p.id)).status, 404);
 });
+
+test('계약 목록은 가볍게: 긴 글·변경이력 없이 보내고, 금액·일정은 그대로 / 상세·수정에는 전체', async () => {
+  const c = await admin.ok('contracts', 'create', {
+    ...base,
+    customerName: '목록고객',
+    customerPhone: '010-7777-5656',
+    totalAmount: 800000,
+    memo: '내부 메모 긴 글',
+    engineerNote: '현관 비밀번호',
+  });
+  await admin.ok('contracts', 'addPayment', c.id, { date: '2026-09-30', kind: '계약금', method: '계좌이체', amount: 100000, memo: '입금자 홍길동' });
+  const row = (await admin.ok('contracts', 'list', {})).find((x) => x.id === c.id);
+  assert.ok(row, '목록에 나옴');
+  for (const k of ['history', 'memo', 'engineerNote', 'happyCallMemo']) assert.equal(row[k], undefined, `목록에는 ${k} 없음`);
+  assert.equal(row.totalAmount, 800000);
+  assert.deepEqual(row.payments, [{ amount: 100000, method: '계좌이체', kind: '계약금' }], '입금은 금액·방법·항목만');
+  assert.equal(row.esign.status, c.esign.status);
+  assert.equal(row.no, c.no);
+  const stats = (await admin.ok('reports', 'contracts', {})).find((x) => x.id === c.id);
+  assert.equal(stats?.memo, undefined, '통계도 가볍게');
+  const full = await admin.ok('contracts', 'get', c.id);
+  assert.equal(full.memo, '내부 메모 긴 글', '상세에는 전체');
+  assert.equal(full.engineerNote, '현관 비밀번호');
+  assert.ok(full.history.length >= 2);
+  // 목록 조회 뒤에도 저장된 데이터는 그대로 (가볍게 읽은 것이 저장되지 않음)
+  await admin.ok('contracts', 'update', c.id, { ...full, happyCallMemo: '해피콜 완료' });
+  const again = await admin.ok('contracts', 'get', c.id);
+  assert.equal(again.memo, '내부 메모 긴 글');
+  assert.equal(again.happyCallMemo, '해피콜 완료');
+});
