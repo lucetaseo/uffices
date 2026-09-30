@@ -118,6 +118,9 @@ const LIGHT_TABLES = {
 // 입금 영수증 사진을 읽거나 바꾸는 요청 (첫 인자 = 계약 번호)
 const RECEIPT_CALLS = new Set(['contracts.receipt', 'contracts.addPayment', 'contracts.updatePayment', 'contracts.removePayment', 'contracts.update']);
 
+// 계약 목록·통계: 저장하지 않는 요청이라 계약의 긴 글·변경이력 없이 읽어도 됨
+const SLIM_CALLS = new Set(['contracts.list', 'reports.contracts']);
+
 const STATUS = { UNAUTHORIZED: 401, FORBIDDEN: 403, NOT_FOUND: 404 };
 
 // 서버 인스턴스마다 첫 요청 때 한 번 DB 준비 (표 생성 / 최초 운영자 계정)
@@ -185,6 +188,7 @@ export async function handleRpc({ body, headers }) {
       if (LIGHT_TABLES[name]) scope.tables = LIGHT_TABLES[name];
       if (name === 'contracts.get') scope.signatureFor = args[0]; // 계약서 보기일 때만 서명 이미지 로드
       if (RECEIPT_CALLS.has(name)) scope.receiptsFor = args[0]; // 이 계약의 영수증 사진만 로드
+      if (SLIM_CALLS.has(name) && readOnlyCall) scope.slimContracts = true; // 목록: 긴 글·변경이력은 읽지 않음
     }
     const { db, readOnly } = await loadSnapshot(client, scope);
     const before = clone(db);

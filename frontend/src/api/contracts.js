@@ -5,7 +5,7 @@
 
 import { loadDb, saveDb, nextId, publicBaseUrl, clientInfo } from './runtime.js';
 import { ApiError, authorize, clone, findContract, isLoginIdTaken, nowIso, visibleContracts } from './core.js';
-import { addHistory, assigneeOf, contractView } from './views.js';
+import { addHistory, assigneeOf, contractListView, contractView } from './views.js';
 import { assertAssignable } from './schedule.js';
 import { invalidateNumbers, numberOf } from './numbering.js';
 import { can } from '../auth/permissions.js';
@@ -350,7 +350,7 @@ export const contracts = {
     return visibleContracts(db, user)
       .filter((c) => (filters.trash ? !!c.deletedAt : !c.deletedAt))
       .filter((c) => matchesFilter(c, filters))
-      .map((c) => contractView(c, user, db))
+      .map((c) => contractListView(c, user, db))
       .sort(SORTERS[filters.sort] || SORTERS.no_desc);
   },
 
@@ -702,7 +702,7 @@ export const reports = {
     return visibleContracts(db, user)
       .filter((c) => !c.deletedAt)
       .filter((c) => matchesFilter(c, { dateType, startDate: from, endDate: to }))
-      .map((c) => contractView(c, user, db));
+      .map((c) => contractListView(c, user, db));
   },
 };
 
