@@ -13,7 +13,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import * as services from '../frontend/src/api/services.js';
 import { setRuntimeAdapter } from '../frontend/src/api/runtime.js';
 import { ApiError } from '../frontend/src/api/core.js';
-import { getPool, loadSnapshot, persistChanges, resolveCompanyId, contractByEsignToken } from './pg.js';
+import { getPool, loadSnapshot, persistChanges, resolveCompanyId, contractByEsignToken, fingerprint } from './pg.js';
 import { hashPassword, verifyPassword } from './password.js';
 import { bootstrap } from './bootstrap.js';
 import { COOKIE_NAME, decodeSession, encodeSession, parseCookies, sessionCookie } from './session.js';
@@ -25,7 +25,9 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
 setRuntimeAdapter({
   async loadDb() {
     // 요청 하나 안에서는 같은 기준 데이터(마지막 저장 시점)의 사본을 돌려줌
-    return clone(store.getStore().committed);
+    //   읽기 전용 요청은 저장하지 않으므로 사본 없이 그대로 (계약 수천 건 복사 비용 절약)
+    const ctx = store.getStore();
+    return ctx.readOnly ? ctx.committed : clone(ctx.committed);
   },
   saveDb(db) {
     store.getStore().committed = clone(db);
@@ -163,6 +165,7 @@ export async function handleRpc({ body, headers }) {
     userAgent: String(headers['user-agent'] || '').slice(0, 300),
     ip: String(headers['x-forwarded-for'] || '').split(',')[0].trim(),
     committed: null,
+    readOnly: READ_ONLY.has(name),
   };
 
   const readOnlyCall = READ_ONLY.has(name);
@@ -198,7 +201,7 @@ export async function handleRpc({ body, headers }) {
     const tLoad = Date.now();
     const { db, readOnly } = await loadSnapshot(client, scope);
     const loadMs = Date.now() - tLoad;
-    const before = readOnlyCall ? null : clone(db); // 읽기 전용은 저장 비교가 없으니 복사 생략 (계약 수천 건 복사 비용 절약)
+    const before = readOnlyCall ? null : fingerprint(db); // 저장 비교용 지문 (읽기 전용은 생략)
     ctx.committed = db;
 
     let result;
