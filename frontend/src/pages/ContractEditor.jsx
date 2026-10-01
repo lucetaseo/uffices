@@ -492,7 +492,8 @@ export default function ContractEditor({ contractId, prefillFrom, prefillCategor
               <>
                 <tr>
                   <td className="label-col">금액</td>
-                  <td className="input-col inline-fields">
+                  <td className="input-col">
+                    <div className="amount-fields">
                     <label className="inline-label">
                       시공총액
                       {form.lineItems.length ? (
@@ -512,6 +513,7 @@ export default function ContractEditor({ contractId, prefillFrom, prefillCategor
                     </span>
                     {form.lineItems.length > 0 && <span className="sub-text">(상품내역이 있으면 시공총액은 자동 합계)</span>}
                     <input className="input-text discount-reason-input" name="discountReason" value={form.discountReason || ''} onChange={onField} placeholder="할인 사유 (예: 박람회 현장 할인)" maxLength={100} />
+                    </div>
                   </td>
                 </tr>
                 <tr>
