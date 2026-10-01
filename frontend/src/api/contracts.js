@@ -5,7 +5,7 @@
 
 import { loadDb, saveDb, nextId, publicBaseUrl, clientInfo } from './runtime.js';
 import { ApiError, authorize, clone, findContract, isLoginIdTaken, nowIso, visibleContracts } from './core.js';
-import { addHistory, assigneeOf, contractListView, contractView } from './views.js';
+import { addHistory, assigneeOf, contractListView, contractView, hideAmounts } from './views.js';
 import { assertAssignable } from './schedule.js';
 import { invalidateNumbers, numberOf } from './numbering.js';
 import { can } from '../auth/permissions.js';
@@ -702,7 +702,8 @@ export const reports = {
     return visibleContracts(db, user)
       .filter((c) => !c.deletedAt)
       .filter((c) => matchesFilter(c, { dateType, startDate: from, endDate: to }))
-      .map((c) => contractListView(c, user, db));
+      .map((c) => contractListView(c, user, db))
+      .map((v) => (can(user, 'sales.total') ? v : hideAmounts(v))); // 매출 합계 권한 없으면 통계에 금액 없음
   },
 };
 

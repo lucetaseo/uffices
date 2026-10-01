@@ -24,7 +24,7 @@ const dateOf = (c, dateType) =>
 
 export default function StatsPage() {
   const { can, handleError } = useAuth();
-  const showAmount = can('contract.amount');
+  const showAmount = can('sales.total'); // 매출 금액은 '회사 매출 합계 보기' 권한이 있는 계정만
   const [dateType, setDateType] = useState('contractDate');
   const [range, setRange] = useState(() => presetRange('3months'));
   const [group, setGroup] = useState('month');

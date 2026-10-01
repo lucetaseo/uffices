@@ -81,6 +81,7 @@ function NoPermission() {
 function ContractList({ trash, engineers }) {
   const { user, can, handleError } = useAuth();
   const showAmount = can('contract.amount');
+  const showTotals = showAmount && can('sales.total'); // 회사 전체 매출 합계는 관리자가 허락한 계정만
 
   const [filter, setFilter] = useState(loadSavedFilter);
   const [rows, setRows] = useState([]);
@@ -195,7 +196,7 @@ function ContractList({ trash, engineers }) {
           취소사유: c.cancelReason,
           작성자: c.ownerName,
         };
-        if (showAmount) {
+        if (showTotals) {
           Object.assign(row, {
             시공총액: a.total,
             할인: a.discount,
@@ -268,7 +269,7 @@ function ContractList({ trash, engineers }) {
           <span className="summary-label">총 {summary.count}건</span>
           <span className="sub-text">(시공완료 {summary.completed}건 · 취소 {summary.canceled}건)</span>
         </div>
-        {showAmount && (
+        {showTotals && (
           <>
             <div>
               <span className="summary-label">실계약금액</span>
