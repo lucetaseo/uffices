@@ -3667,3 +3667,59 @@ input[type='month'] {
     line-height: 26px;
   }
 }
+
+/* 고객 참고사항: 계약서·서명 화면 */
+.doc-customer-note {
+  margin: 14px 0 4px;
+  padding: 10px 14px;
+  background: #f0f7ff;
+  border-left: 4px solid #1a6fe0;
+  border-radius: 4px;
+}
+
+.doc-customer-note h4 {
+  margin: 0 0 6px;
+}
+
+.doc-customer-note p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* 계약서(고객 서명 화면) 폰: [항목 | 값] 한 줄에 하나씩 — 이름·현장이 한 글자씩 세로로 꺾이지 않게 */
+@media screen and (max-width: 600px) {
+  .doc-table,
+  .doc-table > tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .doc-table > tbody > tr {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .doc-table > tbody > tr > th,
+  .doc-table > tbody > tr > td {
+    display: block;
+    width: auto;
+    min-width: 0;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  .doc-table > tbody > tr > th {
+    white-space: normal;
+  }
+
+  /* 칸 테두리가 겹쳐 두꺼워지지 않게 */
+  .doc-table {
+    border: 1px solid #d5dbe5;
+  }
+
+  .doc-table > tbody > tr > th,
+  .doc-table > tbody > tr > td {
+    border: none;
+    border-bottom: 1px solid #e5e9f2;
+  }
+}

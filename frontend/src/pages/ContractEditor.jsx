@@ -98,6 +98,7 @@ function initialForm(contract, company, user) {
     discountReason: '',
     payments: [],
     happyCallMemo: '',
+    customerNote: '',
   };
 }
 
@@ -403,10 +404,158 @@ export default function ContractEditor({ contractId, prefillFrom, prefillCategor
                 <textarea className="input-text full" rows={3} name="memo" value={form.memo} onChange={onField} placeholder="내용입력 (내부용, 고객에게 표시되지 않음)" />
               </td>
             </tr>
+            <tr>
+              <td className="label-col">고객 참고사항</td>
+              <td className="input-col">
+                <textarea className="input-text full customer-note-input" rows={3} name="customerNote" value={form.customerNote || ''} onChange={onField} maxLength={1000} placeholder="고객에게 보이는 안내 (계약서·서명 화면에 표시) 예: 시공 당일 현관 비밀번호를 알려주세요. 시공 후 24시간 물 사용을 피해 주세요." />
+                <div className="sub-text text-blue">ⓘ 이 칸은 <b>고객에게 보입니다</b> (계약서·전자서명 화면). 내부 메모는 위 [기타사항]에 적어 주세요.</div>
+              </td>
+            </tr>
           </tbody>
         </table>
 
-        {/* ---------------- 2. 시공정보 ---------------- */}
+        {/* ---------------- 2. 시공내역 · 금액 ---------------- */}
+        <h3 className="form-section-title">&gt; 시공내역 · 금액</h3>
+        <table className="form-grid-table">
+          <tbody>
+            <tr>
+              <td className="label-col">상품선택</td>
+              <td className="input-col">
+                {showAmount ? (
+                  <>
+                    <div className="inline-fields" style={{ marginBottom: 8 }}>
+                      <select className="input-text product-select" value="" onChange={(e) => addProduct(e.target.value)}>
+                        <option value="">
+                          + {allProducts ? '상품 추가 (전체)' : `${form.category} 상품 추가`} ({shownProducts.length}개)
+                        </option>
+                        {shownProducts.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            [{allProducts ? `${p.category}/` : ''}{p.kind}] {p.name} — {won(p.price)}원
+                          </option>
+                        ))}
+                      </select>
+                      <label className="radio-item">
+                        <input type="checkbox" checked={allProducts} onChange={(e) => setAllProducts(e.target.checked)} /> 전체 상품 보기
+                      </label>
+                      {!allProducts && !shownProducts.length && <span className="sub-text">등록된 {form.category} 상품이 없습니다 (설정 → 상품관리)</span>}
+                      <button type="button" className="btn-dark-sm" onClick={() => set('lineItems', [...form.lineItems, { productId: null, name: '', detail: '', qty: 1, unitPrice: 0 }])}>
+                        + 직접입력
+                      </button>
+                    </div>
+                    {form.lineItems.length > 0 && (
+                      <table className="line-items">
+                        <thead>
+                          <tr>
+                            <th>상품명</th>
+                            <th>상세품목</th>
+                            <th>수량</th>
+                            <th>단가</th>
+                            <th>금액</th>
+                            <th />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {form.lineItems.map((l, i) => (
+                            <tr key={i}>
+                              <td><input className="input-text full" value={l.name} onChange={(e) => setLine(i, { name: e.target.value })} /></td>
+                              <td><input className="input-text full" value={l.detail} onChange={(e) => setLine(i, { detail: e.target.value })} /></td>
+                              <td><input type="number" min="1" className="input-text" style={{ width: 60 }} value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} /></td>
+                              <td><input type="number" min="0" className="input-text money" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: e.target.value })} /></td>
+                              <td className="text-right">{won((Number(l.qty) || 0) * (Number(l.unitPrice) || 0))}</td>
+                              <td>
+                                <button type="button" className="btn-text-danger" onClick={() => set('lineItems', form.lineItems.filter((_, j) => j !== i))}>삭제</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </>
+                ) : (
+                  <div>
+                    {(form.lineItems || []).map((l, i) => (
+                      <div key={i}>· {l.name}{l.qty > 1 ? ` x${l.qty}` : ''}</div>
+                    ))}
+                    <span className="sub-text">상품/금액 수정은 '금액·입금 정보 보기' 권한이 필요합니다.</span>
+                  </div>
+                )}
+              </td>
+            </tr>
+            <tr>
+              <td className="label-col">추가 시공내용</td>
+              <td className="input-col">
+                <textarea className="input-text full" rows={2} name="items" value={form.items} onChange={onField} placeholder="상품 외 추가 내용 (예: 무료 실리콘 오염방지)" />
+              </td>
+            </tr>
+            {showAmount && (
+              <>
+                <tr>
+                  <td className="label-col">금액</td>
+                  <td className="input-col inline-fields">
+                    <label className="inline-label">
+                      시공총액
+                      {form.lineItems.length ? (
+                        <strong>{won(amounts.total)}원</strong>
+                      ) : (
+                        <MoneyInput value={form.totalAmount} onChange={(v) => set('totalAmount', v)} />
+                      )}
+                    </label>
+                    <label className="inline-label">
+                      할인 <MoneyInput value={form.discount} onChange={(v) => set('discount', v)} placeholder="예: 10000" />
+                    </label>
+                    <label className="inline-label">
+                      상품권 <MoneyInput value={form.voucher} onChange={(v) => set('voucher', v)} />
+                    </label>
+                    <span className="calc-result">
+                      실계약금 <strong>{won(amounts.actual)}</strong>원
+                    </span>
+                    {form.lineItems.length > 0 && <span className="sub-text">(상품내역이 있으면 시공총액은 자동 합계)</span>}
+                    <input className="input-text discount-reason-input" name="discountReason" value={form.discountReason || ''} onChange={onField} placeholder="할인 사유 (예: 박람회 현장 할인)" maxLength={100} />
+                  </td>
+                </tr>
+                <tr>
+                  <td className="label-col">입금 내역</td>
+                  <td className="input-col">
+                    {form.payments.map((p, i) => (
+                      <div key={i} className="inline-fields schedule-row">
+                        <input type="date" className="input-text" value={p.date} onChange={(e) => setPay(i, { date: e.target.value })} />
+                        <select className="input-text" value={p.kind} onChange={(e) => setPay(i, { kind: e.target.value })}>
+                          {PAYMENT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+                        </select>
+                        <select className="input-text" value={p.method} onChange={(e) => setPay(i, { method: e.target.value })}>
+                          {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                        <MoneyInput value={p.amount} onChange={(v) => setPay(i, { amount: v })} placeholder="금액" />
+                        <input className="input-text" value={p.memo || ''} onChange={(e) => setPay(i, { memo: e.target.value })} placeholder="메모 (입금자명 등)" />
+                        <PaymentPhotos contractId={contractId} payment={p} onChange={(patch) => setPay(i, patch)} />
+                        <button type="button" className="btn-text-danger pay-row-delete" onClick={() => set('payments', form.payments.filter((_, j) => j !== i))}>삭제</button>
+                      </div>
+                    ))}
+                    <div className="inline-fields">
+                      <button
+                        type="button"
+                        className="btn-dark-sm"
+                        onClick={() =>
+                          set('payments', [
+                            ...form.payments,
+                            { date: today(), kind: form.payments.length ? '잔금' : '계약금', method: PAYMENT_METHODS[0], amount: '', memo: '' },
+                          ])
+                        }
+                      >
+                        + 입금 추가
+                      </button>
+                      <span className="calc-result">
+                        입금 <strong>{won(amounts.paid)}</strong>원 / 잔액 <strong className={amounts.balance > 0 ? 'text-red' : ''}>{won(amounts.balance)}</strong>원
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </>
+            )}
+          </tbody>
+        </table>
+
+        {/* ---------------- 3. 시공정보 ---------------- */}
         <h3 className="form-section-title">&gt; 시공정보</h3>
         <table className="form-grid-table">
           <tbody>
@@ -578,147 +727,6 @@ export default function ContractEditor({ contractId, prefillFrom, prefillCategor
                 </div>
               </td>
             </tr>
-          </tbody>
-        </table>
-
-        {/* ---------------- 3. 시공내역 · 금액 ---------------- */}
-        <h3 className="form-section-title">&gt; 시공내역 · 금액</h3>
-        <table className="form-grid-table">
-          <tbody>
-            <tr>
-              <td className="label-col">상품선택</td>
-              <td className="input-col">
-                {showAmount ? (
-                  <>
-                    <div className="inline-fields" style={{ marginBottom: 8 }}>
-                      <select className="input-text product-select" value="" onChange={(e) => addProduct(e.target.value)}>
-                        <option value="">
-                          + {allProducts ? '상품 추가 (전체)' : `${form.category} 상품 추가`} ({shownProducts.length}개)
-                        </option>
-                        {shownProducts.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            [{allProducts ? `${p.category}/` : ''}{p.kind}] {p.name} — {won(p.price)}원
-                          </option>
-                        ))}
-                      </select>
-                      <label className="radio-item">
-                        <input type="checkbox" checked={allProducts} onChange={(e) => setAllProducts(e.target.checked)} /> 전체 상품 보기
-                      </label>
-                      {!allProducts && !shownProducts.length && <span className="sub-text">등록된 {form.category} 상품이 없습니다 (설정 → 상품관리)</span>}
-                      <button type="button" className="btn-dark-sm" onClick={() => set('lineItems', [...form.lineItems, { productId: null, name: '', detail: '', qty: 1, unitPrice: 0 }])}>
-                        + 직접입력
-                      </button>
-                    </div>
-                    {form.lineItems.length > 0 && (
-                      <table className="line-items">
-                        <thead>
-                          <tr>
-                            <th>상품명</th>
-                            <th>상세품목</th>
-                            <th>수량</th>
-                            <th>단가</th>
-                            <th>금액</th>
-                            <th />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {form.lineItems.map((l, i) => (
-                            <tr key={i}>
-                              <td><input className="input-text full" value={l.name} onChange={(e) => setLine(i, { name: e.target.value })} /></td>
-                              <td><input className="input-text full" value={l.detail} onChange={(e) => setLine(i, { detail: e.target.value })} /></td>
-                              <td><input type="number" min="1" className="input-text" style={{ width: 60 }} value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} /></td>
-                              <td><input type="number" min="0" className="input-text money" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: e.target.value })} /></td>
-                              <td className="text-right">{won((Number(l.qty) || 0) * (Number(l.unitPrice) || 0))}</td>
-                              <td>
-                                <button type="button" className="btn-text-danger" onClick={() => set('lineItems', form.lineItems.filter((_, j) => j !== i))}>삭제</button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </>
-                ) : (
-                  <div>
-                    {(form.lineItems || []).map((l, i) => (
-                      <div key={i}>· {l.name}{l.qty > 1 ? ` x${l.qty}` : ''}</div>
-                    ))}
-                    <span className="sub-text">상품/금액 수정은 '금액·입금 정보 보기' 권한이 필요합니다.</span>
-                  </div>
-                )}
-              </td>
-            </tr>
-            <tr>
-              <td className="label-col">추가 시공내용</td>
-              <td className="input-col">
-                <textarea className="input-text full" rows={2} name="items" value={form.items} onChange={onField} placeholder="상품 외 추가 내용 (예: 무료 실리콘 오염방지)" />
-              </td>
-            </tr>
-            {showAmount && (
-              <>
-                <tr>
-                  <td className="label-col">금액</td>
-                  <td className="input-col inline-fields">
-                    <label className="inline-label">
-                      시공총액
-                      {form.lineItems.length ? (
-                        <strong>{won(amounts.total)}원</strong>
-                      ) : (
-                        <MoneyInput value={form.totalAmount} onChange={(v) => set('totalAmount', v)} />
-                      )}
-                    </label>
-                    <label className="inline-label">
-                      할인 <MoneyInput value={form.discount} onChange={(v) => set('discount', v)} placeholder="예: 10000" />
-                    </label>
-                    <label className="inline-label">
-                      상품권 <MoneyInput value={form.voucher} onChange={(v) => set('voucher', v)} />
-                    </label>
-                    <span className="calc-result">
-                      실계약금 <strong>{won(amounts.actual)}</strong>원
-                    </span>
-                    {form.lineItems.length > 0 && <span className="sub-text">(상품내역이 있으면 시공총액은 자동 합계)</span>}
-                    <input className="input-text discount-reason-input" name="discountReason" value={form.discountReason || ''} onChange={onField} placeholder="할인 사유 (예: 박람회 현장 할인)" maxLength={100} />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="label-col">입금 내역</td>
-                  <td className="input-col">
-                    {form.payments.map((p, i) => (
-                      <div key={i} className="inline-fields schedule-row">
-                        <input type="date" className="input-text" value={p.date} onChange={(e) => setPay(i, { date: e.target.value })} />
-                        <select className="input-text" value={p.kind} onChange={(e) => setPay(i, { kind: e.target.value })}>
-                          {PAYMENT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
-                        </select>
-                        <select className="input-text" value={p.method} onChange={(e) => setPay(i, { method: e.target.value })}>
-                          {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
-                        </select>
-                        <MoneyInput value={p.amount} onChange={(v) => setPay(i, { amount: v })} placeholder="금액" />
-                        <input className="input-text" value={p.memo || ''} onChange={(e) => setPay(i, { memo: e.target.value })} placeholder="메모 (입금자명 등)" />
-                        <PaymentPhotos contractId={contractId} payment={p} onChange={(patch) => setPay(i, patch)} />
-                        <button type="button" className="btn-text-danger pay-row-delete" onClick={() => set('payments', form.payments.filter((_, j) => j !== i))}>삭제</button>
-                      </div>
-                    ))}
-                    <div className="inline-fields">
-                      <button
-                        type="button"
-                        className="btn-dark-sm"
-                        onClick={() =>
-                          set('payments', [
-                            ...form.payments,
-                            { date: today(), kind: form.payments.length ? '잔금' : '계약금', method: PAYMENT_METHODS[0], amount: '', memo: '' },
-                          ])
-                        }
-                      >
-                        + 입금 추가
-                      </button>
-                      <span className="calc-result">
-                        입금 <strong>{won(amounts.paid)}</strong>원 / 잔액 <strong className={amounts.balance > 0 ? 'text-red' : ''}>{won(amounts.balance)}</strong>원
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              </>
-            )}
           </tbody>
         </table>
 

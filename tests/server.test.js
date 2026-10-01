@@ -480,3 +480,21 @@ test('계약 수정 화면 입금 줄 사진: paymentPhotos 로 추가·삭제, 
   assert.equal(v.payments[0].receiptCount, 1);
   assert.equal((await manager('contracts', 'paymentPhotos', c.id, pid, { add: [img(3)] })).status >= 400, true, '권한 없는 실장 차단');
 });
+
+test('고객 참고사항: 저장·이력, 서명 링크(고객)에는 보이고 내부 메모는 숨김, 서명 후 바뀌면 재서명', async () => {
+  const c = await admin.ok('contracts', 'create', { ...base, customerName: '참고고객', customerPhone: '010-7777-4545', memo: '내부 메모', customerNote: '시공 후 24시간 물 사용 금지' });
+  assert.equal(c.customerNote, '시공 후 24시간 물 사용 금지');
+  const { url } = await admin.ok('contracts', 'requestSign', c.id);
+  const token = url.split('/sign/')[1];
+  const anon = client();
+  const view = await anon.ok('esign', 'getByToken', token);
+  assert.equal(view.contract.customerNote, '시공 후 24시간 물 사용 금지', '고객 화면에 보임');
+  assert.equal(view.contract.memo, undefined, '내부 메모는 숨김');
+  await anon.ok('esign', 'sign', token, { signerName: '참고고객', signature: 'data:image/png;base64,AAAA', agreed: true });
+  const full = await admin.ok('contracts', 'get', c.id);
+  const u = await admin.ok('contracts', 'update', c.id, { ...full, customerNote: '바뀐 안내' });
+  assert.notEqual(u.esign.status, '서명완료', '고객 참고사항이 바뀌면 다시 서명 필요');
+  assert.ok(u.history.at(-1).changes.some((ch) => ch.label === '고객 참고사항'));
+  const row = (await admin.ok('contracts', 'list', {})).find((x) => x.id === c.id);
+  assert.equal(row.customerNote, undefined, '목록에는 안 보냄');
+});

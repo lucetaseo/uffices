@@ -182,6 +182,7 @@ function normalizeContractInput(db, user, data, existing) {
     cashReceipt: oneOf(data.cashReceipt, ISSUE_STATUS, ''),
     happyCallMemo: data.happyCallMemo || '',
     memo: data.memo || '',
+    customerNote: String(data.customerNote || '').slice(0, 1000), // 고객 참고사항 (계약서·서명 화면에 고객에게 표시)
   };
   if (status === '취소' && !out.cancelReason) throw new ApiError('취소 사유를 입력해 주세요.');
 
@@ -344,6 +345,7 @@ function diffContract(db, before, after) {
   if ((before.items || '') !== (after.items || '')) changes.push({ label: '시공내용', from: '(변경)', to: '(변경)' });
   if ((before.happyCallMemo || '') !== (after.happyCallMemo || '')) changes.push({ label: '해피콜 메모', from: '(변경)', to: '(변경)' });
   if ((before.memo || '') !== (after.memo || '')) changes.push({ label: '기타사항', from: '(변경)', to: '(변경)' });
+  if ((before.customerNote || '') !== (after.customerNote || '')) changes.push({ label: '고객 참고사항', from: before.customerNote || '-', to: after.customerNote || '-' });
   return changes;
 }
 
@@ -435,6 +437,7 @@ export const contracts = {
     if (c.esign?.status === ESIGN_STATUS.SIGNED) {
       const changed =
         fields.items !== c.items ||
+        (fields.customerNote || '') !== (c.customerNote || '') || // 고객 참고사항도 계약서 내용
         ('totalAmount' in fields &&
           (fields.totalAmount !== c.totalAmount ||
             fields.discount !== c.discount ||

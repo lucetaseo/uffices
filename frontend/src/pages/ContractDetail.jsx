@@ -243,6 +243,13 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
             </tr>
           )}
           <tr>
+            <th>고객 참고사항</th>
+            <td colSpan={5} className="pre-wrap">
+              {selected.customerNote}
+              {selected.customerNote && <span className="sub-text"> (계약서에 고객에게 표시됨)</span>}
+            </td>
+          </tr>
+          <tr>
             <th>기사전달사항</th>
             <td colSpan={5} className="pre-wrap">{selected.engineerNote}</td>
           </tr>
