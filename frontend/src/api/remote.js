@@ -5,15 +5,22 @@ import { ApiError } from './core.js';
 
 async function call(service, method, args) {
   let res;
+  // 서버가 응답하지 않으면 '불러오는 중...'에 머물지 않도록 70초에서 끊고 안내 (서버 제한 60초 + 여유)
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctrl && setTimeout(() => ctrl.abort(), 70000);
   try {
     res = await fetch('/api/rpc', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
       body: JSON.stringify({ service, method, args }),
+      signal: ctrl?.signal,
     });
-  } catch {
+  } catch (e) {
+    if (e?.name === 'AbortError') throw new ApiError('서버 응답이 너무 늦습니다. 잠시 후 새로고침해 주세요.', 'NETWORK');
     throw new ApiError('서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.', 'NETWORK');
+  } finally {
+    if (timer) clearTimeout(timer);
   }
   let data = null;
   try {

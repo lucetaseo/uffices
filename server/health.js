@@ -47,6 +47,17 @@ export async function healthReport() {
       }
       const ms = Math.min(...times);
       report.DB응답시간 = `${ms}ms ${ms <= 30 ? '(빠름)' : ms <= 100 ? '(보통)' : '(느림 — Supabase 프로젝트 지역이 서울(ap-northeast-2)이 아닐 수 있습니다)'}`;
+      // 멈춰 있는 DB 작업 (있으면 화면이 '불러오는 중...'에 머물 수 있음)
+      try {
+        const st = await client.query(`SELECT
+            count(*) FILTER (WHERE state LIKE 'idle in transaction%' AND now() - state_change > interval '1 minute')::int AS stuck,
+            count(*) FILTER (WHERE wait_event_type = 'Lock')::int AS waiting
+          FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()`);
+        const { stuck, waiting } = st.rows[0];
+        report.멈춘작업 = stuck || waiting ? `확인 필요: 멈춘 작업 ${stuck}개, 잠금 대기 ${waiting}개` : '없음';
+      } catch {
+        report.멈춘작업 = '확인 불가';
+      }
       const t = await client.query(`SELECT to_regclass('public.users') IS NOT NULL AS ok`);
       if (!t.rows[0].ok) report.계정 = '아직 표가 없습니다 (첫 로그인 시도 때 자동 생성)';
       else {

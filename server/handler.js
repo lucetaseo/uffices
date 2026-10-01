@@ -174,6 +174,9 @@ export async function handleRpc({ body, headers }) {
   const client = await getPool().connect();
   try {
     await client.query('BEGIN');
+    // 무엇이든 무한정 기다리지 않게: 잠금 대기 15초, 한 문장 45초, 트랜잭션 중 멈춤 60초 넘으면 오류로 끝냄
+    //   (Vercel 함수 제한 60초 안에서 '불러오는 중...'이 끝없이 이어지지 않도록)
+    await client.query(`SET LOCAL lock_timeout = '15s'; SET LOCAL statement_timeout = '45s'; SET LOCAL idle_in_transaction_session_timeout = '60s'`);
     if (!readOnlyCall) await client.query(`SELECT 1 FROM meta WHERE key = 'seq' FOR UPDATE`); // 쓰기 직렬화
 
     // 필요한 업체 데이터 범위 결정
@@ -218,7 +221,10 @@ export async function handleRpc({ body, headers }) {
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
     console.error(`[rpc] ${name} 실패:`, e);
-    return json(500, { error: { message: '서버 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.', code: 'SERVER' } });
+    // 55P03 잠금 대기 초과, 57014 시간 초과 → 다른 요청이 처리 중이라 잠시 뒤 다시 시도하면 됨
+    const busy = e && (e.code === '55P03' || e.code === '57014');
+    const message = busy ? '다른 작업을 처리하느라 서버가 바쁩니다. 잠시 후 다시 시도해 주세요.' : '서버 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+    return json(busy ? 503 : 500, { error: { message, code: 'SERVER' } });
   } finally {
     client.release();
   }
