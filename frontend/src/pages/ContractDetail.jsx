@@ -38,7 +38,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
   const [payTargetId, setPayTargetId] = useState(null);
   const [paymentModal, setPaymentModal] = useState(null); // { contract, payment? }
   const [discountTarget, setDiscountTarget] = useState(null);
-  const [receiptView, setReceiptView] = useState(null); // { image, title }
+  const [receiptView, setReceiptView] = useState(null); // { images: [{id, image}], title }
   const [kakao, setKakao] = useState(null); // { contract, template, brand }
   const [viewId, setViewId] = useState(null);
   const [noteText, setNoteText] = useState('');
@@ -107,7 +107,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
   const openReceipt = async (contract, p) => {
     try {
       const r = await contractApi.receipt(contract.id, p.id);
-      setReceiptView({ image: r.image, title: `${p.date} ${contract.category} ${p.kind} ${won(p.amount)}원 (${p.method})` });
+      setReceiptView({ images: r.images || [{ id: 0, image: r.image }], title: `${p.date} ${contract.category} ${p.kind} ${won(p.amount)}원 (${p.method})` });
     } catch (e) {
       handleError(e);
     }
@@ -502,7 +502,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
                   {p.receipt === '미발행' ? '' : p.receipt}
                   {p.hasReceipt && (
                     <button type="button" className="btn-receipt" title="영수증 사진 보기" onClick={() => openReceipt(p.contract, p)}>
-                      📎 사진
+                      📎 사진{p.receiptCount > 1 ? ` ${p.receiptCount}장` : ''}
                     </button>
                   )}
                 </td>
@@ -747,9 +747,16 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
               <h3>&gt; 영수증 사진 — {receiptView.title}</h3>
               <button type="button" className="modal-close-x" onClick={() => setReceiptView(null)}>&times;</button>
             </div>
-            <img className="receipt-full" src={receiptView.image} alt="영수증 사진" />
+            <div className="receipt-full-list">
+              {receiptView.images.map((r, i) => (
+                <div key={r.id ?? i} className="receipt-full-item">
+                  {receiptView.images.length > 1 && <div className="sub-text">{i + 1} / {receiptView.images.length}</div>}
+                  <img className="receipt-full" src={r.image} alt={`영수증 사진 ${i + 1}`} />
+                  <a className="btn-outline-action" href={r.image} download={`영수증_${i + 1}.jpg`}>내려받기</a>
+                </div>
+              ))}
+            </div>
             <div className="form-bottom-btns">
-              <a className="btn-dark-lg sm" href={receiptView.image} download="영수증.jpg">내려받기</a>
               <button type="button" className="btn-dark-lg sm cancel" onClick={() => setReceiptView(null)}>닫기</button>
             </div>
           </div>

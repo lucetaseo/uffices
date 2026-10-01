@@ -676,7 +676,8 @@ export default function ContractEditor({ contractId, prefillFrom, prefillCategor
                         <select className="input-text" value={p.method} onChange={(e) => setPay(i, { method: e.target.value })}>
                           {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
                         </select>
-                        <input type="number" min="0" className="input-text money" value={p.amount} onChange={(e) => setPay(i, { amount: e.target.value })} placeholder="금액" />
+                        <MoneyInput value={p.amount} onChange={(v) => setPay(i, { amount: v })} placeholder="금액" />
+                        {p.hasReceipt && <span className="sub-text" title="영수증 사진은 계약 상세의 입금 [수정]에서 관리합니다">📎{p.receiptCount > 1 ? p.receiptCount : ''}</span>}
                         <input className="input-text" value={p.memo || ''} onChange={(e) => setPay(i, { memo: e.target.value })} placeholder="메모 (입금자명 등)" />
                         <button type="button" className="btn-text-danger" onClick={() => set('payments', form.payments.filter((_, j) => j !== i))}>삭제</button>
                       </div>

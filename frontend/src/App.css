@@ -3444,3 +3444,90 @@ input[type='month'] {
     white-space: nowrap;
   }
 }
+
+/* 입금 영수증 사진 여러 장: 작은 사진 + [+ 사진 추가] */
+.receipt-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.receipt-thumb,
+.receipt-add {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border: 1px solid #dce1e8;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f8f9fb;
+}
+
+.receipt-thumb.new {
+  border-color: #1a6fe0;
+}
+
+.receipt-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: zoom-in;
+}
+
+.receipt-thumb-x {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 16px;
+  line-height: 24px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.receipt-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  color: #1a6fe0;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.receipt-add .plus {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.receipt-preview-wrap {
+  cursor: zoom-out;
+}
+
+.receipt-preview-wrap .receipt-preview {
+  max-width: 100%;
+  max-height: 420px;
+}
+
+/* 영수증 보기 창: 여러 장을 위아래로 */
+.receipt-full-list {
+  max-height: 70vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.receipt-full-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
