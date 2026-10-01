@@ -610,6 +610,21 @@ export const contracts = {
     return contractView(c, user, db);
   },
 
+  // 입금의 영수증 사진만 추가/삭제 (계약 수정 화면의 입금 줄 [+ 사진])
+  async paymentPhotos(id, paymentId, { add = [], remove = [] } = {}) {
+    const { db, user } = await authorize('contract.edit');
+    if (!can(user, 'contract.amount')) throw new ApiError('금액·입금 정보 권한이 없습니다.', 'FORBIDDEN');
+    const c = findContract(db, user, id);
+    const p = (c.payments || []).find((x) => x.id === Number(paymentId));
+    if (!p) throw new ApiError('입금 내역을 찾을 수 없습니다.', 'NOT_FOUND');
+    const before = p.receiptCount || 0;
+    changeReceipts(db, user, c, p, { add: Array.isArray(add) ? add : [], remove: Array.isArray(remove) ? remove : [] });
+    if (p.receiptCount !== before) addHistory(c, user, '영수증 사진 변경', [{ label: `${p.kind} ${p.date}`, from: `${before}장`, to: `${p.receiptCount}장` }]);
+    c.updatedAt = nowIso();
+    saveDb(db);
+    return contractView(c, user, db);
+  },
+
   async removePayment(id, paymentId) {
     const { db, user } = await authorize('contract.edit');
     if (!can(user, 'contract.amount')) throw new ApiError('금액·입금 정보 권한이 없습니다.', 'FORBIDDEN');
