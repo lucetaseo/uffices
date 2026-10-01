@@ -10,6 +10,7 @@ import {
 import { useAuth } from '../auth/AuthContext.jsx';
 import MoneyInput from '../components/MoneyInput.jsx';
 import PaymentPhotos from '../components/PaymentPhotos.jsx';
+import EngineerPicker from '../components/EngineerPicker.jsx';
 import AptSearchInput from '../components/AptSearchInput.jsx';
 import { ROLES } from '../auth/permissions.js';
 import {
@@ -579,7 +580,7 @@ export default function ContractEditor({ contractId, prefillFrom, prefillCategor
               const dayOffs = s.date ? offs.filter((o) => o.date === s.date) : [];
               return (
                 <tr key={i} className="schedule-step-row">
-                  <td className="label-col">시공예정일 {CIRCLED[i]}</td>
+                  <td className="label-col">시공 등록 {CIRCLED[i]}</td>
                   <td className="input-col">
                     <div className="inline-fields">
                       <input type="date" className="input-text" value={s.date} onChange={(e) => setStep(i, { date: e.target.value })} />
@@ -635,30 +636,18 @@ export default function ContractEditor({ contractId, prefillFrom, prefillCategor
                           })}
                         </select>
                       ) : (
-                        <select className="input-text" value={s.engineerId} onChange={(e) => setStep(i, { engineerId: e.target.value })}>
-                          <option value="">기사선택</option>
-                          {s.engineerId && !engineers.some((en) => String(en.id) === String(s.engineerId)) && (
-                            <option value={s.engineerId}>{s.engineerName || '기사'}(미사용)</option>
-                          )}
-                          {[
-                            [`${form.category} 기사`, engineers.filter((en) => doesCategory(en, form.category))],
-                            ['다른 시공 기사', engineers.filter((en) => !doesCategory(en, form.category))],
-                          ]
-                            .filter(([, group]) => group.length)
-                            .map(([label, group]) => (
-                              <optgroup key={label} label={label}>
-                                {group.map((en) => {
-                                  const off = s.date ? offOf(en.id, s.date) : null;
-                                  const dis = off && offBlocks(off.period, slot);
-                                  return (
-                                    <option key={en.id} value={en.id} disabled={dis && String(en.id) !== String(s.engineerId)}>
-                                      {en.name}({en.category}){off ? ` — ${OFF_LABEL[off.period]}휴무` : ''}
-                                    </option>
-                                  );
-                                })}
-                              </optgroup>
-                            ))}
-                        </select>
+                        <EngineerPicker
+                          value={s.engineerId}
+                          engineers={engineers.filter((en) => doesCategory(en, form.category))}
+                          others={engineers.filter((en) => !doesCategory(en, form.category))}
+                          fallbackName={s.engineerName}
+                          placeholder={`${form.category} 기사 검색`}
+                          info={(en) => {
+                            const off = s.date ? offOf(en.id, s.date) : null;
+                            return { disabled: !!(off && offBlocks(off.period, slot)) && String(en.id) !== String(s.engineerId), note: off ? `${OFF_LABEL[off.period]}휴무` : '' };
+                          }}
+                          onChange={(id) => setStep(i, { engineerId: id })}
+                        />
                       )}
                       <button type="button" className="btn-dark-sm" onClick={() => setStep(i, { engineerId: '', teamId: '' })}>초기화</button>
                     </div>

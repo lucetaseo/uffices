@@ -3723,3 +3723,88 @@ input[type='month'] {
     border-bottom: 1px solid #e5e9f2;
   }
 }
+
+/* 기사 선택: 검색 + 눌러서 선택 */
+.eng-picker {
+  position: relative;
+  display: inline-block;
+}
+
+.eng-picker-input {
+  width: 240px;
+}
+
+.eng-picker-list {
+  position: absolute;
+  z-index: 30;
+  top: 100%;
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: 360px;
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 2px 0 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #c9d3e3;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.eng-picker-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.eng-picker-list li.active {
+  background: #eef4ff;
+}
+
+.eng-picker-list li.selected .name {
+  color: #1a6fe0;
+  font-weight: bold;
+}
+
+.eng-picker-list li.disabled {
+  color: #aab2bf;
+  cursor: not-allowed;
+}
+
+.eng-picker-list li .meta {
+  color: #8a94a6;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.eng-picker-list li .off {
+  color: #7c3aed;
+}
+
+.eng-picker-list li.more {
+  color: #1a6fe0;
+  border-top: 1px solid #edf0f5;
+  font-size: 13px;
+}
+
+.eng-picker-list li.empty {
+  color: #8a94a6;
+  cursor: default;
+}
+
+@media screen and (max-width: 768px) {
+  .eng-picker,
+  .eng-picker-input {
+    width: 100%;
+  }
+
+  .eng-picker-list {
+    width: 100%;
+    max-width: none;
+  }
+}
