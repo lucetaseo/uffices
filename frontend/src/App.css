@@ -3602,3 +3602,19 @@ input[type='month'] {
     border-bottom: 1px dashed #dce1e8;
   }
 }
+
+/* 사용자관리 목록: 권한은 짧은 이름, 작은 칸은 줄바꿈 없이 */
+.perm-chip.strong {
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: bold;
+}
+
+.user-list-table th,
+.user-list-table td:not(.perm-summary) {
+  white-space: nowrap;
+}
+
+.user-list-table td.perm-summary {
+  min-width: 180px;
+}

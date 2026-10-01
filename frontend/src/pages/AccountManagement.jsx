@@ -396,7 +396,7 @@ function ManagerAccountsView() {
       </div>
 
       <div className="table-responsive">
-        <table className="customer-table">
+        <table className="customer-table user-list-table">
           <thead>
             <tr>
               <th>번호</th>
@@ -427,7 +427,9 @@ function ManagerAccountsView() {
                 <td>{m.dataScope === DATA_SCOPES.OWN ? '본인 작성 건만' : '업체 전체'}</td>
                 <td className="text-left perm-summary">
                   {PERMISSIONS.filter((p) => m.permissions.includes(p.key)).map((p) => (
-                    <span key={p.key} className="perm-chip">{p.label}</span>
+                    <span key={p.key} className={`perm-chip ${p.key === 'sales.total' ? 'strong' : ''}`} title={p.label}>
+                      {p.short || p.label}
+                    </span>
                   ))}
                 </td>
                 <td>{m.lastLoginAt ? new Date(m.lastLoginAt).toLocaleString('ko-KR') : '-'}</td>
