@@ -181,7 +181,7 @@ function ContractList({ trash, engineers }) {
           계약일: c.contractDate,
           시공종류: c.workType,
           계약승인: c.approval,
-          시공예정일: c.schedules.map((s) => s.date && `${s.date} ${timeLabel(s)}`.trim()).filter(Boolean).join(', ') || '미정',
+          '시공 등록': c.schedules.map((s) => s.date && `${s.date} ${timeLabel(s)}`.trim()).filter(Boolean).join(', ') || '미정',
           시공담당: c.schedules.map((s) => s.assigneeName).filter(Boolean).join(', ') || '미배정',
           모바일웹: c.schedules.map((s) => s.mobileStatus || '입력 전').join(', '),
           입주예정일: c.moveInDate,

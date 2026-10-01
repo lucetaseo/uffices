@@ -131,7 +131,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
   // ---------------- 탭별 화면 ----------------
   const basicInfo = (
     <>
-      <h3 className="form-section-title">&gt; 기본정보</h3>
+      <h3 className="form-section-title">&gt; 계약정보</h3>
       <table className="info-grid">
         <tbody>
           <tr>
@@ -167,6 +167,13 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
             <th>기타사항</th>
             <td colSpan={3} className="pre-wrap">{head.memo}</td>
           </tr>
+          <tr>
+            <th>고객 참고사항</th>
+            <td colSpan={5} className="pre-wrap">
+              {selected.customerNote}
+              {selected.customerNote && <span className="sub-text"> (계약서에 고객에게 표시됨)</span>}
+            </td>
+          </tr>
         </tbody>
       </table>
     </>
@@ -192,7 +199,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
             </td>
           </tr>
           <tr>
-            <th>시공예정일</th>
+            <th>시공 등록</th>
             <td colSpan={2}>
               {[0, 1, 2].map((i) => (
                 <div key={i}>
@@ -243,13 +250,6 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
             </tr>
           )}
           <tr>
-            <th>고객 참고사항</th>
-            <td colSpan={5} className="pre-wrap">
-              {selected.customerNote}
-              {selected.customerNote && <span className="sub-text"> (계약서에 고객에게 표시됨)</span>}
-            </td>
-          </tr>
-          <tr>
             <th>기사전달사항</th>
             <td colSpan={5} className="pre-wrap">{selected.engineerNote}</td>
           </tr>
@@ -283,7 +283,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
               <th>구분</th>
               <th>패키지</th>
               <th>추가시공품목</th>
-              <th>시공예정일</th>
+              <th>시공 등록</th>
               <th>시공기사</th>
               {can('notify.send') && <th>알림톡</th>}
               <th>관리</th>
@@ -367,7 +367,7 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
   const sum = sumAmounts(list);
   const amountSection = showAmount && (
     <>
-      <h3 className="form-section-title">&gt; 시공별 계약금액</h3>
+      <h3 className="form-section-title">&gt; 시공내역 · 금액</h3>
       <div className="amount-cards">
         <div className="amount-card">
           <span>총 계약금액</span>
@@ -603,10 +603,11 @@ export default function ContractDetail({ contractId, onBack, onEdit, onNewWork, 
 
       {tab === '시공관리' && (
         <>
+          {/* 계약 등록 화면과 같은 순서: 계약정보 → 시공내역·금액 → 시공정보 */}
           {basicInfo}
+          {amountSection}
           {workInfo}
           {workList}
-          {amountSection}
           {progressSection}
         </>
       )}

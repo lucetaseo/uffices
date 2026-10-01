@@ -40,7 +40,7 @@ export default function ContractTable({ contracts, selectedIds, onToggle, onTogg
             <th>구분</th>
             <th>접수형태</th>
             <th>시공상태</th>
-            <th>시공예정일</th>
+            <th>시공 등록</th>
             <th>시공담당</th>
             <th>계약자</th>
             <th>아파트명</th>
@@ -83,7 +83,7 @@ export default function ContractTable({ contracts, selectedIds, onToggle, onTogg
                 <td data-label="시공상태">
                   <span className={`status-chip ${STATUS_CLASS[item.status] || ''}`}>{item.status}</span>
                 </td>
-                <td data-label="시공예정일" className="nowrap text-left">
+                <td data-label="시공 등록" className="nowrap text-left">
                   {item.schedules.map((s, i) => (
                     <div key={i}>
                       {CIRCLED[i]} {s.date ? `${s.date} ${timeLabel(s)}`.trim() : '미정'}
