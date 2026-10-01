@@ -467,3 +467,16 @@ test('입금 영수증 사진 여러 장: 추가·일부 삭제·최대 5장, �
   assert.equal(after.payments.find((x) => x.id === fp.id).receiptCount, 2, '화면 값과 관계없이 실제 사진 수 유지');
   assert.equal((await admin.ok('contracts', 'receipt', c.id, p.id)).images.length, 2);
 });
+
+test('계약 수정 화면 입금 줄 사진: paymentPhotos 로 추가·삭제, 변경이력 기록', async () => {
+  const img = (n) => 'data:image/jpeg;base64,' + Buffer.from(`pay-photo-${n}`).toString('base64');
+  const c = await admin.ok('contracts', 'create', { ...base, customerName: '줄사진고객', customerPhone: '010-7777-8080', totalAmount: 500000, payments: [{ date: '2026-10-01', kind: '계약금', method: '카드', amount: 100000 }] });
+  const pid = c.payments[0].id;
+  let v = await admin.ok('contracts', 'paymentPhotos', c.id, pid, { add: [img(1), img(2)] });
+  assert.equal(v.payments[0].receiptCount, 2);
+  assert.equal(v.history.at(-1).action, '영수증 사진 변경');
+  const r = await admin.ok('contracts', 'receipt', c.id, pid);
+  v = await admin.ok('contracts', 'paymentPhotos', c.id, pid, { remove: [r.images[0].id] });
+  assert.equal(v.payments[0].receiptCount, 1);
+  assert.equal((await manager('contracts', 'paymentPhotos', c.id, pid, { add: [img(3)] })).status >= 400, true, '권한 없는 실장 차단');
+});

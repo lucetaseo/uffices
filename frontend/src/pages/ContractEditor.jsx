@@ -9,6 +9,7 @@ import {
 } from '../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import MoneyInput from '../components/MoneyInput.jsx';
+import PaymentPhotos from '../components/PaymentPhotos.jsx';
 import AptSearchInput from '../components/AptSearchInput.jsx';
 import { ROLES } from '../auth/permissions.js';
 import {
@@ -217,9 +218,24 @@ export default function ContractEditor({ contractId, prefillFrom, prefillCategor
     );
     setSaving(true);
     try {
-      const payload = { ...form, schedules };
-      const saved = isEdit ? await contractApi.update(contractId, payload) : await contractApi.create(payload);
-      alert(isEdit ? '저장되었습니다.' : `계약 No.${saved.no} 이(가) 등록되었습니다.`);
+      // 입금 줄의 사진(_add/_remove/_saved)은 계약 저장 뒤 입금별로 따로 올림 (한 번에 보내면 용량 한도 초과 위험)
+      const strip = (p) => Object.fromEntries(Object.entries(p).filter(([k]) => !k.startsWith('_')));
+      const payload = { ...form, schedules, payments: form.payments.map(strip) };
+      let saved = isEdit ? await contractApi.update(contractId, payload) : await contractApi.create(payload);
+      const kept = form.payments.filter((p) => Number(p.amount)); // 서버도 금액 0인 줄은 저장하지 않음 → 순서가 같음
+      let photoError = '';
+      for (let i = 0; i < kept.length; i++) {
+        const row = kept[i];
+        const target = saved.payments?.[i];
+        if (!target || (!(row._add || []).length && !(row._remove || []).length)) continue;
+        try {
+          saved = await contractApi.paymentPhotos(saved.id, target.id, { add: row._add || [], remove: (row._remove || []).filter((id) => id != null) });
+        } catch (err) {
+          photoError = err.message;
+        }
+      }
+      if (photoError) alert(`계약은 저장되었지만 영수증 사진 일부를 올리지 못했습니다.\n${photoError}\n계약 상세의 입금 [수정]에서 다시 첨부해 주세요.`);
+      else alert(isEdit ? '저장되었습니다.' : `계약이 등록되었습니다. (No.${saved.no})`);
       onClose(saved, isEdit);
     } catch (err) {
       handleError(err);
@@ -677,9 +693,9 @@ export default function ContractEditor({ contractId, prefillFrom, prefillCategor
                           {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
                         </select>
                         <MoneyInput value={p.amount} onChange={(v) => setPay(i, { amount: v })} placeholder="금액" />
-                        {p.hasReceipt && <span className="sub-text" title="영수증 사진은 계약 상세의 입금 [수정]에서 관리합니다">📎{p.receiptCount > 1 ? p.receiptCount : ''}</span>}
                         <input className="input-text" value={p.memo || ''} onChange={(e) => setPay(i, { memo: e.target.value })} placeholder="메모 (입금자명 등)" />
-                        <button type="button" className="btn-text-danger" onClick={() => set('payments', form.payments.filter((_, j) => j !== i))}>삭제</button>
+                        <PaymentPhotos contractId={contractId} payment={p} onChange={(patch) => setPay(i, patch)} />
+                        <button type="button" className="btn-text-danger pay-row-delete" onClick={() => set('payments', form.payments.filter((_, j) => j !== i))}>삭제</button>
                       </div>
                     ))}
                     <div className="inline-fields">
