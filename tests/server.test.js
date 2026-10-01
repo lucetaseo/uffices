@@ -498,3 +498,24 @@ test('고객 참고사항: 저장·이력, 서명 링크(고객)에는 보이고
   const row = (await admin.ok('contracts', 'list', {})).find((x) => x.id === c.id);
   assert.equal(row.customerNote, undefined, '목록에는 안 보냄');
 });
+
+test('목록 변경 확인(listCached): 그대로면 목록 없이 응답, 수정·입금·휴지통·권한이 바뀌면 새 목록', async () => {
+  const first = await admin.ok('contracts', 'listCached', {}, '');
+  assert.ok(first.rows.length > 0 && first.version);
+  const same = await admin.ok('contracts', 'listCached', {}, first.version);
+  assert.equal(same.unchanged, true, '바뀐 게 없으면 목록 안 보냄');
+  assert.equal(same.rows, undefined);
+  const c = first.rows[0];
+  const full = await admin.ok('contracts', 'get', c.id);
+  await admin.ok('contracts', 'update', c.id, { ...full, memo: `${full.memo || ''} 변경확인` });
+  const afterEdit = await admin.ok('contracts', 'listCached', {}, first.version);
+  assert.ok(afterEdit.rows, '수정 후에는 새 목록');
+  await admin.ok('contracts', 'moveToTrash', [c.id]);
+  const afterTrash = await admin.ok('contracts', 'listCached', {}, afterEdit.version);
+  assert.ok(afterTrash.rows && !afterTrash.rows.some((r) => r.id === c.id), '휴지통 이동 반영');
+  await admin.ok('contracts', 'restore', [c.id]);
+  const other = await admin.ok('contracts', 'listCached', { brand: '더좋은집' }, afterTrash.version);
+  assert.ok(other.rows, '검색 조건이 다르면 새 목록');
+  const mine = await manager.ok('contracts', 'listCached', {}, first.version);
+  assert.ok(mine.rows, '다른 계정은 같은 확인표를 써도 새 목록');
+});

@@ -87,6 +87,13 @@ const SORTERS = {
     (firstScheduleDate(a) || '9999').localeCompare(firstScheduleDate(b) || '9999') || byNo(b, a),
 };
 
+// 짧은 문자열 지문 (변경 확인용, 보안용 아님)
+function shortHash(text) {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
 // ------------------------------------------------------------
 // 입력 정규화 + 검증 (서버 검증에 해당)
 // ------------------------------------------------------------
@@ -387,6 +394,31 @@ export const contracts = {
       .filter((c) => matchesFilter(c, filters))
       .map((c) => contractListView(c, user, db))
       .sort(SORTERS[filters.sort] || SORTERS.no_desc);
+  },
+
+  // 목록 + 변경 확인표(version). 화면이 가진 목록과 같으면 목록 없이 "그대로"만 보냄 → 다시 받는 수 MB 절약
+  //   version: 볼 수 있는 계약 수·최근 수정시각·번호합 + 기사/직원 이름 + 내 권한 — 하나라도 바뀌면 달라짐
+  async listCached(filters = {}, knownVersion = '') {
+    const { db, user } = await authorize('contract.view');
+    const all = visibleContracts(db, user);
+    let maxUpd = '';
+    let idSum = 0;
+    all.forEach((c) => {
+      if ((c.updatedAt || '') > maxUpd) maxUpd = c.updatedAt || '';
+      idSum += c.id;
+    });
+    const names = (list) => list.map((x) => `${x.id}:${x.name}`).join(',');
+    const version = [
+      all.length,
+      maxUpd,
+      idSum,
+      shortHash(names(db.engineers) + '|' + names(db.teams || []) + '|' + names(db.users)),
+      user.id,
+      shortHash(JSON.stringify(user.permissions || []) + user.dataScope),
+      shortHash(JSON.stringify(filters)),
+    ].join('/');
+    if (knownVersion && knownVersion === version) return { version, unchanged: true };
+    return { version, rows: await contracts.list(filters) };
   },
 
   async get(id) {
