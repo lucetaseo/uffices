@@ -16,7 +16,8 @@ export function compressImage(file, { maxSize = 1400, quality = 0.8 } = {}) {
       URL.revokeObjectURL(url);
       let q = quality;
       let data = canvas.toDataURL('image/jpeg', q);
-      while (data.length > 1.5 * 1024 * 1024 && q > 0.4) {
+      // 사진 여러 장을 한 번에 올려도 서버 한도(약 4.5MB) 안에 들도록 1장 약 0.6MB 이하로
+      while (data.length > 0.6 * 1024 * 1024 && q > 0.4) {
         q -= 0.1;
         data = canvas.toDataURL('image/jpeg', q);
       }

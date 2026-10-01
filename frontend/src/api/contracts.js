@@ -233,6 +233,7 @@ function normalizePayment(p, id) {
     receipt: oneOf(p.receipt, RECEIPT_TYPES, RECEIPT_TYPES[0]),
     memo: String(p.memo || '').slice(0, 200),
     hasReceipt: !!p.hasReceipt, // 영수증 사진 첨부 여부 (사진은 paymentReceipts 에 따로 저장)
+    receiptCount: Math.max(0, Math.floor(Number(p.receiptCount) || 0)) || (p.hasReceipt ? 1 : 0), // 첨부 사진 수
     createdAt: p.createdAt || nowIso(),
   };
 }
@@ -248,15 +249,47 @@ function checkReceiptImage(img) {
   if (img.length > RECEIPT_MAX) throw new ApiError('영수증 사진이 너무 큽니다. 다시 찍거나 작은 사진으로 올려 주세요.');
 }
 
-// image: 문자열이면 저장/교체, null 이면 삭제, undefined 면 그대로
-function setReceipt(db, user, c, payment, image) {
-  if (image === undefined) return;
-  db.paymentReceipts = (db.paymentReceipts || []).filter((r) => !(r.contractId === c.id && r.paymentId === payment.id));
-  if (image) {
-    checkReceiptImage(image);
-    db.paymentReceipts.push({ id: nextId(db, 'paymentReceipts'), companyId: user.companyId, contractId: c.id, paymentId: payment.id, image, createdAt: nowIso() });
+const RECEIPTS_PER_PAYMENT = 5; // 입금 1건당 사진 최대 장수
+
+const receiptsOf = (db, c, payment) => (db.paymentReceipts || []).filter((r) => r.contractId === c.id && r.paymentId === payment.id);
+
+// 입금의 사진 바꾸기
+//   add: 새로 붙일 사진들(data URL), remove: 지울 사진 번호들
+//   image(예전 방식): 문자열이면 전부 이 사진 1장으로 교체, null 이면 전부 삭제
+function changeReceipts(db, user, c, payment, { add = [], remove = [], image } = {}) {
+  db.paymentReceipts = db.paymentReceipts || [];
+  const mine = (r) => r.contractId === c.id && r.paymentId === payment.id;
+  if (image !== undefined) {
+    db.paymentReceipts = db.paymentReceipts.filter((r) => !mine(r));
+    if (image) add = [image, ...add];
   }
-  payment.hasReceipt = !!image;
+  const removeIds = new Set((remove || []).map(Number));
+  if (removeIds.size) db.paymentReceipts = db.paymentReceipts.filter((r) => !(mine(r) && removeIds.has(r.id)));
+  const list = (add || []).filter(Boolean);
+  if (receiptsOf(db, c, payment).length + list.length > RECEIPTS_PER_PAYMENT) {
+    throw new ApiError(`영수증 사진은 입금 1건당 ${RECEIPTS_PER_PAYMENT}장까지 첨부할 수 있습니다.`);
+  }
+  list.forEach((img) => {
+    checkReceiptImage(img);
+    db.paymentReceipts.push({ id: nextId(db, 'paymentReceipts'), companyId: user.companyId, contractId: c.id, paymentId: payment.id, image: img, createdAt: nowIso() });
+  });
+  payment.receiptCount = receiptsOf(db, c, payment).length;
+  payment.hasReceipt = payment.receiptCount > 0;
+}
+
+// 화면에서 보낸 입금 정보 → 사진 변경 내용
+const receiptChangesOf = (payment) => ({
+  add: Array.isArray(payment.receiptImages) ? payment.receiptImages : [],
+  remove: Array.isArray(payment.removeReceiptIds) ? payment.removeReceiptIds : [],
+  image: payment.receiptImage,
+});
+
+// 저장된 사진 수로 입금의 사진 표시를 맞춤 (계약 수정 시 화면 값 대신 실제 값 사용)
+function syncReceiptCounts(db, c) {
+  (c.payments || []).forEach((p) => {
+    p.receiptCount = receiptsOf(db, c, p).length;
+    p.hasReceipt = p.receiptCount > 0;
+  });
 }
 
 // 계약의 입금 내역에서 사라진 입금의 사진 정리
@@ -413,7 +446,10 @@ export const contracts = {
       c.customerId = upsertCustomerForContract(db, user, c.customerName, fields.customerPhone, fields.customerPhone2).id;
     }
     Object.assign(c, fields, { updatedAt: nowIso() });
-    if ('payments' in fields) cleanReceipts(db, c);
+    if ('payments' in fields) {
+      cleanReceipts(db, c);
+      syncReceiptCounts(db, c);
+    }
     const changes = diffContract(db, before, c);
     if (changes.length) addHistory(c, user, '계약 수정', changes);
     invalidateNumbers(db);
@@ -537,9 +573,10 @@ export const contracts = {
     const { db, user } = await authorize('contract.view');
     if (!can(user, 'contract.amount')) throw new ApiError('금액·입금 정보 권한이 없습니다.', 'FORBIDDEN');
     const c = findContract(db, user, id);
-    const r = (db.paymentReceipts || []).find((x) => x.contractId === c.id && x.paymentId === Number(paymentId));
-    if (!r) throw new ApiError('첨부된 영수증 사진이 없습니다.', 'NOT_FOUND');
-    return { image: r.image, createdAt: r.createdAt };
+    const list = (db.paymentReceipts || []).filter((x) => x.contractId === c.id && x.paymentId === Number(paymentId)).sort((a, b) => a.id - b.id);
+    if (!list.length) throw new ApiError('첨부된 영수증 사진이 없습니다.', 'NOT_FOUND');
+    const images = list.map((r) => ({ id: r.id, image: r.image, createdAt: r.createdAt }));
+    return { images, image: images[0].image, createdAt: images[0].createdAt }; // image: 예전 화면 호환
   },
 
   async addPayment(id, payment) {
@@ -548,9 +585,9 @@ export const contracts = {
     const c = findContract(db, user, id);
     if (c.deletedAt) throw new ApiError('휴지통에 있는 계약입니다.');
     c.payments = c.payments || [];
-    const p = normalizePayment({ ...payment, hasReceipt: false }, Math.max(0, ...c.payments.map((x) => x.id)) + 1);
+    const p = normalizePayment({ ...payment, hasReceipt: false, receiptCount: 0 }, Math.max(0, ...c.payments.map((x) => x.id)) + 1);
     c.payments.push(p);
-    setReceipt(db, user, c, p, payment.receiptImage || undefined);
+    changeReceipts(db, user, c, p, { ...receiptChangesOf(payment), image: payment.receiptImage || undefined });
     addHistory(c, user, `${p.kind === '환불' ? '환불' : '입금'} 등록`, [{ label: p.kind, from: '-', to: `${won(p.amount)}원 (${p.method})` }]);
     c.updatedAt = nowIso();
     saveDb(db);
@@ -564,9 +601,9 @@ export const contracts = {
     const idx = (c.payments || []).findIndex((x) => x.id === Number(paymentId));
     if (idx < 0) throw new ApiError('입금 내역을 찾을 수 없습니다.', 'NOT_FOUND');
     const before = c.payments[idx];
-    const p = normalizePayment({ ...payment, createdAt: before.createdAt, hasReceipt: before.hasReceipt }, before.id);
+    const p = normalizePayment({ ...payment, createdAt: before.createdAt, hasReceipt: before.hasReceipt, receiptCount: before.receiptCount }, before.id);
     c.payments[idx] = p;
-    setReceipt(db, user, c, p, payment.receiptImage);
+    changeReceipts(db, user, c, p, receiptChangesOf(payment));
     addHistory(c, user, '입금 수정', [{ label: `${before.kind} ${before.date}`, from: `${won(before.amount)}원`, to: `${won(p.amount)}원` }]);
     c.updatedAt = nowIso();
     saveDb(db);

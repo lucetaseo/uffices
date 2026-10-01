@@ -445,3 +445,25 @@ test('회사 매출 합계: 권한 없는 실장은 통계에 금액이 없고, 
   await mgr.ok('auth', 'login', 'salesmgr', 'sales1234');
   assert.ok((await mgr.ok('reports', 'contracts', {})).some((r) => r.totalAmount > 0), '허락 후에는 통계 금액 보임');
 });
+
+test('입금 영수증 사진 여러 장: 추가·일부 삭제·최대 5장, 계약 수정 뒤에도 사진 수 유지', async () => {
+  const img = (n) => 'data:image/jpeg;base64,' + Buffer.from(`fake-jpeg-${n}`).toString('base64');
+  const c = await admin.ok('contracts', 'create', { ...base, customerName: '여러장고객', customerPhone: '010-7777-9090', totalAmount: 900000 });
+  let v = await admin.ok('contracts', 'addPayment', c.id, { date: '2026-10-01', kind: '계약금', method: '카드', amount: 300000, receiptImages: [img(1), img(2)] });
+  let p = v.payments.at(-1);
+  assert.equal(p.receiptCount, 2);
+  let r = await admin.ok('contracts', 'receipt', c.id, p.id);
+  assert.deepEqual(r.images.map((x) => x.image), [img(1), img(2)]);
+  v = await admin.ok('contracts', 'updatePayment', c.id, p.id, { ...p, receiptImages: [img(3)], removeReceiptIds: [r.images[0].id] });
+  p = v.payments.at(-1);
+  assert.equal(p.receiptCount, 2, '1장 지우고 1장 추가');
+  r = await admin.ok('contracts', 'receipt', c.id, p.id);
+  assert.deepEqual(r.images.map((x) => x.image), [img(2), img(3)]);
+  const tooMany = await admin('contracts', 'updatePayment', c.id, p.id, { ...p, receiptImages: [img(4), img(5), img(6), img(7)] });
+  assert.equal(tooMany.status, 400, '5장 넘으면 거절');
+  const full = await admin.ok('contracts', 'get', c.id);
+  const fp = full.payments.find((x) => x.id === p.id);
+  const after = await admin.ok('contracts', 'update', c.id, { ...full, payments: full.payments.map((x) => (x.id === p.id ? { ...x, receiptCount: 0, hasReceipt: false } : x)) });
+  assert.equal(after.payments.find((x) => x.id === fp.id).receiptCount, 2, '화면 값과 관계없이 실제 사진 수 유지');
+  assert.equal((await admin.ok('contracts', 'receipt', c.id, p.id)).images.length, 2);
+});
