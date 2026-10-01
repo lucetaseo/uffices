@@ -3808,3 +3808,57 @@ input[type='month'] {
     max-width: none;
   }
 }
+
+/* 계약 금액 줄: [시공총액][할인][상품권] 실계약금 [할인 사유] */
+.amount-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.amount-fields .inline-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+@media screen and (max-width: 768px) {
+  /* 폰: 한 줄에 하나씩 [이름 | 금액칸 원] */
+  .amount-fields {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .amount-fields .inline-label {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: center;
+    font-weight: bold;
+  }
+
+  .amount-fields .money-input {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .amount-fields .money-input input {
+    flex: 1;
+    min-width: 0;
+    width: auto !important;
+  }
+
+  .amount-fields .calc-result {
+    margin: 0;
+    padding: 8px 10px;
+    background: #f5f7fb;
+    border-radius: 4px;
+  }
+
+  .amount-fields .discount-reason-input {
+    width: 100% !important;
+  }
+}
