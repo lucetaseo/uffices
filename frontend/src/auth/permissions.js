@@ -33,6 +33,7 @@ export const PERMISSIONS = [
   { key: 'contract.edit', group: '계약관리', label: '계약 수정' },
   { key: 'contract.delete', group: '계약관리', label: '계약 삭제/휴지통' },
   { key: 'contract.amount', group: '계약관리', label: '금액·입금 정보 보기' },
+  { key: 'sales.total', group: '계약관리', label: '회사 매출 합계 보기 (목록 상단 합계·통계 금액·엑셀 금액)' },
   { key: 'contract.approve', group: '계약관리', label: '계약 승인/미승인 처리' },
   { key: 'esign.send', group: '전자계약', label: '전자계약 서명요청' },
   { key: 'customer.view', group: '계약자관리', label: '계약자 조회' },

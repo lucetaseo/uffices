@@ -23,15 +23,19 @@ export function contractView(c, user, db) {
   out.ownerName = db.users.find((u) => u.id === c.ownerId)?.name || '';
   out.schedules = out.schedules.map((s) => ({ ...s, ...assigneeOf(db, s) }));
   if (out.esign) delete out.esign.signature; // 서명 이미지는 상세조회에서만
-  if (!can(user, 'contract.amount')) {
-    out.totalAmount = null;
-    out.discount = null;
-    out.voucher = null;
-    out.discountReason = null;
-    out.payments = [];
-    out.lineItems = (out.lineItems || []).map(({ unitPrice, ...rest }) => rest);
-    out.amountHidden = true;
-  }
+  return can(user, 'contract.amount') ? out : hideAmounts(out);
+}
+
+// 금액·입금 정보를 지운 계약 (권한 없는 사용자용)
+export function hideAmounts(view) {
+  const out = { ...view };
+  out.totalAmount = null;
+  out.discount = null;
+  out.voucher = null;
+  out.discountReason = null;
+  out.payments = [];
+  out.lineItems = (out.lineItems || []).map(({ unitPrice, ...rest }) => rest);
+  out.amountHidden = true;
   return out;
 }
 

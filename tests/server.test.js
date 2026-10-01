@@ -421,3 +421,27 @@ test('계약 목록은 가볍게: 긴 글·변경이력 없이 보내고, 금액
   assert.equal(again.memo, '내부 메모 긴 글');
   assert.equal(again.happyCallMemo, '해피콜 완료');
 });
+
+test('회사 매출 합계: 권한 없는 실장은 통계에 금액이 없고, 관리자가 허락하면 보임', async () => {
+  const boss = client();
+  await boss.ok('auth', 'login', 'admin', 'admin1234');
+  await boss.ok('users', 'create', {
+    role: 'MANAGER',
+    loginId: 'salesmgr',
+    password: 'sales1234',
+    name: '상담실장',
+    permissions: ['contract.view', 'contract.amount', 'stats.view'],
+    dataScope: 'all',
+  });
+  const mgr = client();
+  await mgr.ok('auth', 'login', 'salesmgr', 'sales1234');
+  const rows = await mgr.ok('reports', 'contracts', {});
+  assert.ok(rows.length > 0);
+  assert.ok(rows.every((r) => r.totalAmount === null && r.payments.length === 0), '통계 데이터에 금액 없음');
+  const list = await mgr.ok('contracts', 'list', {});
+  assert.ok(list.some((r) => r.totalAmount > 0), '계약별 금액(금액 권한)은 그대로 보임');
+  const u = (await boss.ok('users', 'list')).find((x) => x.loginId === 'salesmgr');
+  await boss.ok('users', 'update', u.id, { permissions: [...u.permissions, 'sales.total'] });
+  await mgr.ok('auth', 'login', 'salesmgr', 'sales1234');
+  assert.ok((await mgr.ok('reports', 'contracts', {})).some((r) => r.totalAmount > 0), '허락 후에는 통계 금액 보임');
+});
