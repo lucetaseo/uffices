@@ -57,7 +57,7 @@ const rows = async (client, sql, params = []) => (await client.query(sql, params
 //   scope.signatureFor: 이 계약의 서명 이미지도 함께 로드 (계약서 보기)
 //   scope.slimContracts: 계약의 긴 글·변경이력은 빼고 로드 (목록·통계 — 읽기 전용 요청만)
 // scope.slimContracts 일 때 계약에서 빼고 읽을 항목 (목록용 — 읽기 전용 요청에만 사용)
-const SLIM_DROP = ['history', 'memo', 'happyCallMemo', 'notes', 'engineerNote'].map((k) => `- '${k}'`).join(' ');
+const SLIM_DROP = ['history', 'memo', 'happyCallMemo', 'notes', 'engineerNote', 'customerNote'].map((k) => `- '${k}'`).join(' ');
 
 export async function loadSnapshot(client, scope) {
   const db = { seq: {}, version: 2 };

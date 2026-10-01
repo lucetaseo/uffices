@@ -109,6 +109,13 @@ export default function ContractDocument({ contract, company, showAmount = true,
         </tbody>
       </table>
 
+      {contract.customerNote && (
+        <div className="doc-customer-note">
+          <h4>고객 참고사항</h4>
+          <p className="pre-wrap">{contract.customerNote}</p>
+        </div>
+      )}
+
       <div className="doc-terms">
         <h4>계약 조건</h4>
         <ol>

@@ -42,7 +42,7 @@ export function hideAmounts(view) {
 // 목록용 가벼운 계약 (계약 목록·통계): 긴 글·변경이력 등 목록에서 안 쓰는 항목은 빼고 보냄
 //   상세·수정·계약서 화면은 contracts.get / group 으로 전체를 따로 받습니다.
 //   목록 화면(표·합계·엑셀·알림톡·진행상황·통계)에서 새 항목을 쓰게 되면 여기에도 남겨야 합니다.
-export const LIST_DROP = ['history', 'memo', 'happyCallMemo', 'notes', 'engineerNote', 'legacyNo', 'customerId', 'updatedAt', 'taxInvoice', 'cashReceipt', 'discountReason'];
+export const LIST_DROP = ['history', 'memo', 'happyCallMemo', 'notes', 'engineerNote', 'customerNote', 'legacyNo', 'customerId', 'updatedAt', 'taxInvoice', 'cashReceipt', 'discountReason'];
 const SCHEDULE_KEEP = ['date', 'time', 'ampm', 'assignType', 'engineerId', 'teamId', 'assigneeName', 'engineerName', 'engineerPhone', 'teamName', 'mobileStatus'];
 const filled = (v) => v !== '' && v !== null && v !== undefined;
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => filled(o[k])).map((k) => [k, o[k]]));

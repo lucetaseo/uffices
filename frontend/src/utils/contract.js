@@ -135,6 +135,7 @@ export const groupPrefill = (c) => ({
   receptionType: c.receptionType,
   taxInvoice: c.taxInvoice || '',
   cashReceipt: c.cashReceipt || '',
+  customerNote: c.customerNote || '', // 같은 현장 추가 시공에도 고객 안내 그대로
 });
 
 // 여러 시공의 금액 합계 (계약 상세의 금액 요약)
