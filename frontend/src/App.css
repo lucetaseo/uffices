@@ -3602,3 +3602,68 @@ input[type='month'] {
     border-bottom: 1px dashed #dce1e8;
   }
 }
+
+/* 사용자관리 목록: 권한은 짧은 이름, 작은 칸은 줄바꿈 없이 */
+.perm-chip.strong {
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: bold;
+}
+
+.user-list-table th,
+.user-list-table td:not(.perm-summary) {
+  white-space: nowrap;
+}
+
+.user-list-table td.perm-summary {
+  min-width: 180px;
+}
+
+/* 입금 줄 [+ 사진]·작은 사진: 손가락으로 누르기 쉽게 크게 */
+.btn-pay-photo {
+  height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: bold;
+  border-width: 2px;
+}
+
+.pay-thumb {
+  width: 44px;
+  height: 44px;
+}
+
+.pay-thumb button {
+  width: 22px;
+  height: 22px;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.pay-photos .btn-receipt {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+@media screen and (max-width: 1100px) {
+  .btn-pay-photo,
+  .pay-photos .btn-receipt {
+    height: 46px;
+    min-width: 96px;
+    justify-content: center;
+    font-size: 15px;
+  }
+
+  .pay-thumb {
+    width: 52px;
+    height: 52px;
+  }
+
+  .pay-thumb button {
+    width: 26px;
+    height: 26px;
+    font-size: 17px;
+    line-height: 26px;
+  }
+}
